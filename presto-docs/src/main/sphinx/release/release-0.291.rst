@@ -36,9 +36,9 @@ _______________
 * Add support for the histogram statistic type. `#22365 <https://github.com/prestodb/presto/pull/22365>`_
 * Add support for time type partitioning in the ORC file format for Iceberg. `#24091 <https://github.com/prestodb/presto/pull/24091>`_
 * Add testing for partitioning using time type in Iceberg. `#24091 <https://github.com/prestodb/presto/pull/24091>`_
-* Add catalog and schema level access checks in USE statement. `#23882 <https://github.com/prestodb/presto/pull/23882>`_
 * Enable ``scale-writers`` by default. `#24107 <https://github.com/prestodb/presto/pull/24107>`_
 * Update usage of MD5 to SHA256. `#23903 <https://github.com/prestodb/presto/pull/23903>`_
+* Improve UUID comparisons so they conform to `IETF RFC 4122 <https://datatracker.ietf.org/doc/html/rfc4122>`_. `#23847 <https://github.com/prestodb/presto/pull/23847>`_
 
 Prestissimo (native Execution) Changes
 ______________________________________
@@ -48,6 +48,14 @@ ______________________________________
 * Add support for automatic scaling of writer threads for partitioned tables. Can be enabled with the ``native_execution_scale_partitioned_writer_threads_enabled`` session property. Native execution only. `#24155 <https://github.com/prestodb/presto/pull/24155>`_
 * Remove the ``experimental.table-writer-merge-operator-enabled`` configuration property and the ``table_writer_merge_operator_enabled`` session property. `#24145 <https://github.com/prestodb/presto/pull/24145>`_
 * Remove deprecated  ``native_query_trace_task_reg_exp session`` property from Prestissimo. `#24270 <https://github.com/prestodb/presto/pull/24270>`_
+* Add utilizing environment variables as stand in for configuration values. The environment variable value is retrieved and used for the configuration option. `#23880 <https://github.com/prestodb/presto/pull/23880>`_
+* Add session property ``native_query_trace_fragment_id`` and ``native_query_trace_shard_id`` for easier trace control. `#24209 <https://github.com/prestodb/presto/pull/24209>`_
+* Add session property: ``native_table_scan_scaled_processing_enabled``. `#24284 <https://github.com/prestodb/presto/pull/24284>`_
+* Add session property: ``native_table_scan_scale_up_memory_usage_ratio``. `#24284 <https://github.com/prestodb/presto/pull/24284>`_
+* Add session property ``native_scaled_writer_rebalance_max_memory_usage_ratio``. `#24261 <https://github.com/prestodb/presto/pull/24261>`_
+* Add session property ``native_scaled_writer_max_partitions_per_writer``. `#24261 <https://github.com/prestodb/presto/pull/24261>`_
+* Add session property ``native_scaled_writer_min_partition_processed_bytes_rebalance_threshold``. `#24261 <https://github.com/prestodb/presto/pull/24261>`_
+* Add session property ``native_scaled_writer_min_processed_bytes_rebalance_threshold``. `#24261 <https://github.com/prestodb/presto/pull/24261>`_
 
 Security Changes
 ________________
@@ -65,6 +73,15 @@ ________________
 * Upgrade gson to version 2.8.9 in response to `CVE-2022-25647 <https://cve.mitre.org/cgi-bin/cvename.cgi?name=CVE-2022-25647>`_. `#24051 <https://github.com/prestodb/presto/pull/24051>`_
 * Upgrade jetty dependencies to version 9.4.56.v20240826 in response to `CVE-2024-8184 <https://cve.mitre.org/cgi-bin/cvename.cgi?name=CVE-2024-8184>`_. `#24184 <https://github.com/prestodb/presto/pull/24184>`_
 * Upgrade netty dependencies to version 4.1.115.Final in response to `CVE-2024-47535 <https://cve.mitre.org/cgi-bin/cvename.cgi?name=CVE-2024-47535>`_. `#24137 <https://github.com/prestodb/presto/pull/24137>`_
+* Upgrade druid-processing to 30.0.1 in response to `CVE-2024-45384 <https://github.com/advisories/GHSA-p72w-r6fv-6g5h>`_ and `CVE-2024-45537 <https://github.com/advisories/GHSA-jh66-3545-vpm7>`_. `#23949 <https://github.com/prestodb/presto/pull/23949>`_
+* Upgrade lucene-core to 8.10.0 in response to `WS-2021-0646 <https://www.mend.io/vulnerability-database/WS-2021-0646>`_. `#24168 <https://github.com/prestodb/presto/pull/24168>`_
+* Upgrade lucene-queryparser to 8.10.0 in response to `WS-2021-0646 <https://vuln.whitesourcesoftware.com/vulnerability/WS-2021-0646>`_. `#24168 <https://github.com/prestodb/presto/pull/24168>`_
+* Upgrade lucene-analyzer-common to 8.10.0 in response to `WS-2021-0646 <https://www.mend.io/vulnerability-database/WS-2021-0646>`_. `#24168 <https://github.com/prestodb/presto/pull/24168>`_
+* Update hibernate-validator to 6.2.0.Final in response to `CVE-2023-1932 <https://www.mend.io/vulnerability-database/CVE-2023-1932>`_ and `CVE-2020-10693 <https://vuln.whitesourcesoftware.com/vulnerability/CVE-2020-10693>`_. `#24168 <https://github.com/prestodb/presto/pull/24177>`_
+* Upgrade Jackson dependencies to 2.15.4 in response to `PRISMA-2023-0067 <https://www.ibm.com/support/pages/security-bulletin-vulnerability-jackson-core-might-affect-ibm-business-automation-workflow-prisma-2023-0067>`_. `#23753 <https://github.com/prestodb/presto/pull/23753>`_
+* Upgrade snakeyaml to 2.0 in response to `CVE-2022-1471 <https://nvd.nist.gov/vuln/detail/CVE-2022-1471>`_ and `CVE-2022-25857 <https://nvd.nist.gov/vuln/detail/cve-2022-25857>`_ and `CVE-2017-18640 <https://nvd.nist.gov/vuln/detail/cve-2017-18640>`_ and `CVE-2022-38752 <https://nvd.nist.gov/vuln/detail/CVE-2022-38752>`_ and `CVE-2022-38751 <https://nvd.nist.gov/vuln/detail/CVE-2022-38751>`_ and `CVE-2022-38750 <https://nvd.nist.gov/vuln/detail/CVE-2022-38750>`_ and `CVE-2022-38749 <https://nvd.nist.gov/vuln/detail/CVE-2022-38749>`_ and `CVE-2022-41854 <https://nvd.nist.gov/vuln/detail/CVE-2022-41854>`_. `#24099 <https://github.com/prestodb/presto/pull/24099>`_
+* Upgrade nanoid to 3.3.8 in response to `CVE-2024-55565 <https://www.cve.org/CVERecord?id=CVE-2024-55565>`_. `#24273 <https://github.com/prestodb/presto/pull/24273>`_
+
 
 BigQuery Connector Changes
 __________________________
@@ -103,6 +120,11 @@ ________________________
 MongoDB Connector Changes
 _________________________
 * Add steps to connect to MongoDB cluster with TLS CA File to :doc:`/connector/mongodb`. `#24352 <https://github.com/prestodb/presto/pull/24352>`_
+
+
+Clickhouse Connector Changes
+----------------------------
+* Add ``DateTime64`` type support. `#24344 <https://github.com/prestodb/presto/pull/24344>`_
 
 SPI Changes
 ___________
