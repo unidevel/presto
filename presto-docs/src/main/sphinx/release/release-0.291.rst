@@ -91,6 +91,10 @@ Cassandra Connector Changes
 ___________________________
 * Improve cryptographic protocol in response to `Weak SSL/TLS protocols should not be used <https://sonarqube.ow2.org/coding_rules?open=java%3AS4423&rule_key=java%3AS4423>`_. `#24436 <https://github.com/prestodb/presto/pull/24436>`_
 
+Clickhouse Connector Changes
+____________________________
+* Add ``DateTime64`` type support. `#24344 <https://github.com/prestodb/presto/pull/24344>`_
+
 Delta Connector Changes
 _______________________
 * Add ``catalog.system.invalidate_metastore_cache`` procedure to invalidate all, or portions of, the metastore cache. `#23401 <https://github.com/prestodb/presto/pull/23401>`_
@@ -120,11 +124,6 @@ ________________________
 MongoDB Connector Changes
 _________________________
 * Add steps to connect to MongoDB cluster with TLS CA File to :doc:`/connector/mongodb`. `#24352 <https://github.com/prestodb/presto/pull/24352>`_
-
-
-Clickhouse Connector Changes
-----------------------------
-* Add ``DateTime64`` type support. `#24344 <https://github.com/prestodb/presto/pull/24344>`_
 
 SPI Changes
 ___________
