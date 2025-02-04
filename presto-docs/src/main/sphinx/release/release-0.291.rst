@@ -4,6 +4,15 @@ Release 0.291
 
 **Highlights**
 ==============
+* Add :doc:`/sql/alter-table` SET PROPERTIES statement. `#21495 <https://github.com/prestodb/presto/pull/21495>`_
+* Add catalog and schema level access checks in :doc:`/sql/use` statement. `#24182 <https://github.com/prestodb/presto/pull/24182>`_
+* Add single worker execution. To improve latency of tiny queries running on a large cluster, we introduce single worker execution mode: query will only use one node to execute and plan would be optimized accordingly. This feature can be turned on by the configuration property ``single-node-execution-enabled`` or the session property ``single_node_execution_enabled``. `#24172 <https://github.com/prestodb/presto/pull/24172>`_
+* Add support for the histogram statistic type. `#22365 <https://github.com/prestodb/presto/pull/22365>`_
+* Add support for ``ALTER VIEW RENAME TO`` operation, including the necessary infrastructure for connector implementations. `#23749 <https://github.com/prestodb/presto/pull/23749>`_
+* Improve scheduling for CTE materialization: Now, only the stages containing CTE table scans that reference CTE table write stages are blocked till the write is complete, instead of the entire query being blocked as was the case previously. This is controlled by the session property ``enhanced_cte_scheduling_enabled`` (on by default). `#24108 <https://github.com/prestodb/presto/pull/24108>`_
+* Add support for time type partitioning in the ORC file format for Iceberg. `#24091 <https://github.com/prestodb/presto/pull/24091>`_
+* Enable ``scale-writers`` by default. `#24107 <https://github.com/prestodb/presto/pull/24107>`_
+* Improve UUID comparisons so they conform to `IETF RFC 4122 <https://datatracker.ietf.org/doc/html/rfc4122>`_. `#23847 <https://github.com/prestodb/presto/pull/23847>`_
 
 **Details**
 ===========
@@ -20,8 +29,8 @@ _______________
 * Add :doc:`/sql/alter-table` SET PROPERTIES statement. `#21495 <https://github.com/prestodb/presto/pull/21495>`_
 * Add :func:`google_polyline_decode` function to convert Google polyline to Presto ST_Geometry types. `#23999 <https://github.com/prestodb/presto/pull/23999>`_
 * Add :func:`google_polyline_encode` function to convert Presto ST_Geometry to Google polyline types. `#23999 <https://github.com/prestodb/presto/pull/23999>`_
-* Add Delete TableWriter TableFinish node to SPI. `#24088 <https://github.com/prestodb/presto/pull/24088>`_
-* Add SemiJoin Join TableWriter Delete TableFinish node to connector optimizer. `#24154 <https://github.com/prestodb/presto/pull/24154>`_
+* Add Delete, TableWriter, and TableFinish node to SPI. `#24088 <https://github.com/prestodb/presto/pull/24088>`_
+* Add SemiJoin, Join, TableWriter, Delete, and TableFinish node to connector optimizer. `#24154 <https://github.com/prestodb/presto/pull/24154>`_
 * Add ``ClientRequestFilter.java`` interface in Presto-spi. `#23380 <https://github.com/prestodb/presto/pull/23380>`_
 * Add a configuration property ``plan-checker.config-dir`` to set the configuration directory for PlanCheckerProvider configurations. `#23955 <https://github.com/prestodb/presto/pull/23955>`_
 * Add a session property ``include_values_node_in_connector_optimizer`` to enable connector optimizer optimize plans with values node.  `#24227 <https://github.com/prestodb/presto/pull/24227>`_
