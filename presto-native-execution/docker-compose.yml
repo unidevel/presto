@@ -18,6 +18,8 @@ services:
     build:
       context: .
       dockerfile: scripts/dockerfiles/ubuntu-22.04-dependency.dockerfile
+    volumes:
+      - ccache:/root/.ccache
 
   ubuntu-native-runtime:
     # Usage:
@@ -37,6 +39,8 @@ services:
                             -DPRESTO_ENABLE_S3=ON
       context: .
       dockerfile: scripts/dockerfiles/prestissimo-runtime.dockerfile
+    volumes:
+      - ccache:/root/.ccache
 
   centos-native-dependency:
     # Usage:
@@ -46,6 +50,8 @@ services:
     build:
       context: .
       dockerfile: scripts/dockerfiles/centos-dependency.dockerfile
+    volumes:
+      - ccache:/root/.ccache
 
   centos-native-runtime:
     # Usage:
@@ -62,3 +68,8 @@ services:
                             -DPRESTO_ENABLE_S3=ON
       context: .
       dockerfile: scripts/dockerfiles/prestissimo-runtime.dockerfile
+    volumes:
+      - ccache:/root/.ccache
+
+volumes:
+  ccache:

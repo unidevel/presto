@@ -23,7 +23,12 @@ ENV PROMPT_ALWAYS_RESPOND=n
 ENV BUILD_BASE_DIR=_build
 ENV BUILD_DIR=""
 
-RUN mkdir -p /prestissimo /runtime-libraries
+# Enable ccache
+ENV CCACHE_DIR=/root/.ccache
+ENV CC="ccache gcc"
+ENV CXX="ccache g++"
+
+RUN mkdir -p /prestissimo /runtime-libraries ${CCACHE_DIR}
 COPY . /prestissimo/
 RUN EXTRA_CMAKE_FLAGS=${EXTRA_CMAKE_FLAGS} \
     NUM_THREADS=${NUM_THREADS} make --directory="/prestissimo/" cmake-and-build BUILD_TYPE=${BUILD_TYPE} BUILD_DIR=${BUILD_DIR} BUILD_BASE_DIR=${BUILD_BASE_DIR}
@@ -34,6 +39,13 @@ RUN !(LD_LIBRARY_PATH=${LD_LIBRARY_PATH}:/usr/local/lib:/usr/local/lib64 ldd /pr
 #          prestissimo-runtime
 #//////////////////////////////////////////////
 
+# Save ccache contents in a separate stage
+FROM alpine:latest as ccache-image
+COPY --from=prestissimo-image /root/.ccache /ccache
+VOLUME /ccache
+CMD ["tail", "-f", "/dev/null"]
+
+# Continue with the runtime image
 FROM ${BASE_IMAGE}
 
 ENV BUILD_BASE_DIR=_build
