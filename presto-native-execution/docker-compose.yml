@@ -19,10 +19,10 @@ services:
       context: .
       dockerfile: scripts/dockerfiles/ubuntu-22.04-dependency.dockerfile
 
-  ubuntu-native-ccache:
+  ubuntu-native-dev:
     # Usage:
-    #   docker compose build ubuntu-native-ccache
-    #   podman compose build ubuntu-native-ccache
+    #   docker compose build ubuntu-native-dev
+    #   podman compose build ubuntu-native-dev
     image: presto/prestissimo-dependency:ubuntu-22.04
     build:
       args:
@@ -38,6 +38,19 @@ services:
       context: .
       dockerfile: scripts/dockerfiles/prestissimo-runtime.dockerfile
       target: prestissimo-ccache
+    stdin_open: true
+    tty: true
+    volumes:
+      - ..:/presto
+    working_dir: /presto/presto-native-execution
+    environment:
+    #  - CCACHE_DIR=/presto/presto-native-execution/.ccache
+      - NUM_THREADS=2 # default value for NUM_THREADS
+      - EXTRA_CMAKE_FLAGS=-DPRESTO_ENABLE_TESTING=OFF
+                          -DPRESTO_ENABLE_PARQUET=ON
+                          -DPRESTO_ENABLE_S3=ON
+    command: >
+      bash -c "if [ ! -d /presto/presto-native-execution/.ccache ]; then cp -r /root/.cache/ccache /presto/presto-native-execution/.ccache; fi && git config --global --add safe.directory /presto && git config --global --add safe.directory /presto/presto-native-execution/velox && ccache -sz -v && exec bash -i"
 
   ubuntu-native-runtime:
     # Usage:
@@ -67,10 +80,10 @@ services:
       context: .
       dockerfile: scripts/dockerfiles/centos-dependency.dockerfile
 
-  centos-native-ccache:
+  centos-native-dev:
     # Usage:
-    #   docker compose build centos-native-ccache
-    #   podman compose build centos-native-ccache
+    #   docker compose build centos-native-dev
+    #   podman compose build centos-native-dev
     image: presto/prestissimo-dependency:centos9
     build:
       args:
@@ -83,6 +96,19 @@ services:
       context: .
       dockerfile: scripts/dockerfiles/prestissimo-runtime.dockerfile
       target: prestissimo-ccache
+    stdin_open: true
+    tty: true
+    volumes:
+      - ..:/presto
+    working_dir: /presto/presto-native-execution
+    environment:
+      - CCACHE_BASEDIR=/presto/presto-native-execution
+      - NUM_THREADS=2 # default value for NUM_THREADS
+      - EXTRA_CMAKE_FLAGS=-DPRESTO_ENABLE_TESTING=OFF
+                          -DPRESTO_ENABLE_PARQUET=ON
+                          -DPRESTO_ENABLE_S3=ON
+    command: >
+      bash -c "if [ ! -d /presto/presto-native-execution/.ccache ]; then cp -r /root/.cache/ccache /presto/presto-native-execution/.ccache; fi && git config --global --add safe.directory /presto && ccache -sz -v && exec bash -i"
 
   centos-native-runtime:
     # Usage:
