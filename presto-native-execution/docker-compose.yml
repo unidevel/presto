@@ -37,7 +37,7 @@ services:
                             -DPRESTO_ENABLE_S3=ON
       context: .
       dockerfile: scripts/dockerfiles/prestissimo-runtime.dockerfile
-      target: prestissimo-ccache
+      target: prestissimo-dev
     stdin_open: true
     tty: true
     volumes:
@@ -94,7 +94,7 @@ services:
                             -DPRESTO_ENABLE_S3=ON
       context: .
       dockerfile: scripts/dockerfiles/prestissimo-runtime.dockerfile
-      target: prestissimo-ccache
+      target: prestissimo-dev
     stdin_open: true
     tty: true
     volumes:

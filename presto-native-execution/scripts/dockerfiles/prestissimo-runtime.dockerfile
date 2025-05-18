@@ -24,10 +24,10 @@ ENV PROMPT_ALWAYS_RESPOND=n
 ENV BUILD_ROOT=/presto/presto-native-execution
 ENV BUILD_BASE_DIR=_build
 ENV CCACHE_NOHASHDIR=true
-ENV CCACHE_BASEDIR=/presto/presto-native-execution
+ENV CCACHE_BASEDIR=${BUILD_ROOT}
 
 RUN mkdir -p ${BUILD_ROOT} /runtime-libraries
-COPY . /presto/presto-native-execution
+COPY . ${BUILD_ROOT}
 RUN EXTRA_CMAKE_FLAGS="${EXTRA_CMAKE_FLAGS}" \
     NUM_THREADS=${NUM_THREADS} make --directory="${BUILD_ROOT}" cmake-and-build BUILD_TYPE=${BUILD_TYPE} BUILD_DIR=${BUILD_DIR} BUILD_BASE_DIR=${BUILD_BASE_DIR} && \
     ccache -sz -v
@@ -35,10 +35,10 @@ RUN !(LD_LIBRARY_PATH=${LD_LIBRARY_PATH}:/usr/local/lib:/usr/local/lib64 ldd ${B
     LD_LIBRARY_PATH=${LD_LIBRARY_PATH}:/usr/local/lib:/usr/local/lib64 ldd ${BUILD_ROOT}/${BUILD_BASE_DIR}/${BUILD_DIR}/presto_cpp/main/presto_server | awk 'NF == 4 { system("cp " $3 " /runtime-libraries") }'
 
 #/////////////////////////////////////////////
-#          prestissimo-ccache
+#          prestissimo-dev
 #//////////////////////////////////////////////
 
-FROM ${DEPENDENCY_IMAGE} as prestissimo-ccache
+FROM ${DEPENDENCY_IMAGE} as prestissimo-dev
 
 ENV PROMPT_ALWAYS_RESPOND=n
 ENV BUILD_ROOT=/presto/presto-native-execution
@@ -56,7 +56,7 @@ RUN ccache -sz -v
 FROM ${BASE_IMAGE}
 
 ENV BUILD_BASE_DIR=_build
-ENV BUILD_DIR=""
+ARG BUILD_DIR='release'
 
 COPY --chmod=0775 --from=prestissimo-image /presto/presto-native-execution/${BUILD_BASE_DIR}/${BUILD_DIR}/presto_cpp/main/presto_server /usr/bin/
 COPY --chmod=0775 --from=prestissimo-image /runtime-libraries/* /usr/lib64/prestissimo-libs/
