@@ -28,6 +28,7 @@ public class PlanCheckerRouterPluginModule
     {
         configBinder(binder).bindConfig(PlanCheckerRouterPluginConfig.class);
         binder.bind(PlanCheckerRouterPluginScheduler.class).in(SINGLETON);
-        newExporter(binder).export(PlanCheckerRouterPluginPrestoClient.class).withGeneratedName();
+        binder.bind(RequestStats.class).in(SINGLETON);
+        newExporter(binder).export(RequestStats.class).withGeneratedName();
     }
 }

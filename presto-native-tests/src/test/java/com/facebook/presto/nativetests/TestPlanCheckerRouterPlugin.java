@@ -27,6 +27,7 @@ import com.facebook.presto.router.scheduler.CustomSchedulerManager;
 import com.facebook.presto.router.scheduler.PlanCheckerRouterPluginConfig;
 import com.facebook.presto.router.scheduler.PlanCheckerRouterPluginPrestoClient;
 import com.facebook.presto.router.scheduler.PlanCheckerRouterPluginSchedulerFactory;
+import com.facebook.presto.router.scheduler.RequestStats;
 import com.facebook.presto.router.security.RouterSecurityModule;
 import com.facebook.presto.router.spec.GroupSpec;
 import com.facebook.presto.router.spec.RouterSpec;
@@ -145,7 +146,7 @@ public class TestPlanCheckerRouterPlugin
             for (String query : queries) {
                 runQuery(query, httpServerUri);
             }
-            assertEquals(planCheckerRouterPluginPrestoClient.getNativeClusterRedirectRequests().getTotalCount(), queries.size());
+            assertEquals(RequestStats.getInstance().getNativeClusterRedirectRequests().getTotalCount(), queries.size());
         }
     }
 
@@ -160,7 +161,7 @@ public class TestPlanCheckerRouterPlugin
             }
             // testFailingQueriesOnBothClusters() test case will run before this.
             // Since all the queries are failing on a native plan checker cluster, we redirect them to a java cluster and will count as a Java cluster redirect.
-            assertEquals(planCheckerRouterPluginPrestoClient.getJavaClusterRedirectRequests().getTotalCount(), queries.size() + getFailingQueriesOnBothClustersProvider().length);
+            assertEquals(RequestStats.getInstance().getJavaClusterRedirectRequests().getTotalCount(), queries.size() + getFailingQueriesOnBothClustersProvider().length);
         }
     }
 

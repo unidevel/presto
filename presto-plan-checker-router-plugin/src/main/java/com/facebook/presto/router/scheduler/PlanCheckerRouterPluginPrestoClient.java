@@ -14,7 +14,6 @@
 package com.facebook.presto.router.scheduler;
 
 import com.facebook.airlift.log.Logger;
-import com.facebook.airlift.stats.CounterStat;
 import com.facebook.presto.client.ClientSession;
 import com.facebook.presto.client.QueryError;
 import com.facebook.presto.client.StatementClient;
@@ -22,8 +21,6 @@ import com.facebook.presto.sql.parser.SqlParserOptions;
 import com.google.common.collect.ImmutableMap;
 import io.airlift.units.Duration;
 import okhttp3.OkHttpClient;
-import org.weakref.jmx.Managed;
-import org.weakref.jmx.Nested;
 
 import java.net.URI;
 import java.security.Principal;
@@ -42,8 +39,6 @@ public class PlanCheckerRouterPluginPrestoClient
 {
     private static final Logger log = Logger.get(PlanCheckerRouterPluginPrestoClient.class);
     private static final String ANALYZE_CALL = "EXPLAIN (TYPE DISTRIBUTED) ";
-    private static final CounterStat javaClusterRedirectRequests = new CounterStat();
-    private static final CounterStat nativeClusterRedirectRequests = new CounterStat();
     private final OkHttpClient httpClient = new OkHttpClient();
     private final URI planCheckerClusterURI;
     private final URI javaRouterURI;
@@ -93,26 +88,12 @@ public class PlanCheckerRouterPluginPrestoClient
 
         if (isNativeCompatible) {
             log.debug("Native compatible, routing to native-clusters router: [%s]", nativeRouterURI);
-            nativeClusterRedirectRequests.update(1L);
+            RequestStats.getInstance().updateNativeRequests(1L);
             return Optional.of(nativeRouterURI);
         }
         log.debug("Native incompatible, routing to java-clusters router: [%s]", javaRouterURI);
-        javaClusterRedirectRequests.update(1L);
+        RequestStats.getInstance().updateJavaRequests(1L);
         return Optional.of(javaRouterURI);
-    }
-
-    @Managed
-    @Nested
-    public CounterStat getJavaClusterRedirectRequests()
-    {
-        return javaClusterRedirectRequests;
-    }
-
-    @Managed
-    @Nested
-    public CounterStat getNativeClusterRedirectRequests()
-    {
-        return nativeClusterRedirectRequests;
     }
 
     private ClientSession parseHeadersToClientSession(Map<String, List<String>> headers, Principal principal, String remoteUserAddr)
