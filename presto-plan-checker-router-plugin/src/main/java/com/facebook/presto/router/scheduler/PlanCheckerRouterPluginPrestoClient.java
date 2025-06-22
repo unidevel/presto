@@ -44,13 +44,15 @@ public class PlanCheckerRouterPluginPrestoClient
     private final URI javaRouterURI;
     private final URI nativeRouterURI;
     private final Duration clientRequestTimeout;
+    private final RequestStats requestStats;
 
-    public PlanCheckerRouterPluginPrestoClient(URI planCheckerClusterURI, URI javaRouterURI, URI nativeRouterURI, Duration clientRequestTimeout)
+    public PlanCheckerRouterPluginPrestoClient(URI planCheckerClusterURI, URI javaRouterURI, URI nativeRouterURI, Duration clientRequestTimeout, RequestStats requestStats)
     {
         this.planCheckerClusterURI = planCheckerClusterURI;
         this.javaRouterURI = javaRouterURI;
         this.nativeRouterURI = nativeRouterURI;
         this.clientRequestTimeout = clientRequestTimeout;
+        this.requestStats = requestStats;
     }
 
     public Optional<URI> getCompatibleClusterURI(Map<String, List<String>> headers, String statement, Principal principal, String remoteUserAddr)
@@ -88,11 +90,11 @@ public class PlanCheckerRouterPluginPrestoClient
 
         if (isNativeCompatible) {
             log.debug("Native compatible, routing to native-clusters router: [%s]", nativeRouterURI);
-            RequestStats.getInstance().updateNativeRequests(1L);
+            this.requestStats.updateNativeRequests(1L);
             return Optional.of(nativeRouterURI);
         }
         log.debug("Native incompatible, routing to java-clusters router: [%s]", javaRouterURI);
-        RequestStats.getInstance().updateJavaRequests(1L);
+        this.requestStats.updateJavaRequests(1L);
         return Optional.of(javaRouterURI);
     }
 

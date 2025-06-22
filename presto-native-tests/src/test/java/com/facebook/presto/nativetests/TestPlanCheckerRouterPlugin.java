@@ -68,6 +68,7 @@ public class TestPlanCheckerRouterPlugin
     private boolean sidecarEnabled;
     // mock object only to check the redirect requests counters.
     private PlanCheckerRouterPluginPrestoClient planCheckerRouterPluginPrestoClient;
+    private RequestStats requestStats;
 
     @BeforeClass
     public void init()
@@ -86,11 +87,13 @@ public class TestPlanCheckerRouterPlugin
                 .setJavaRouterURI(javaClusterURI)
                 .setNativeRouterURI(nativeClusterURI);
 
+        requestStats = new RequestStats();
         planCheckerRouterPluginPrestoClient = new PlanCheckerRouterPluginPrestoClient(
                 planCheckerRouterConfig.getPlanCheckClustersURIs().get(0),
                 planCheckerRouterConfig.getJavaRouterURI(),
                 planCheckerRouterConfig.getNativeRouterURI(),
-                planCheckerRouterConfig.getClientRequestTimeout());
+                planCheckerRouterConfig.getClientRequestTimeout(),
+                requestStats);
 
         Path tempFile = Files.createTempFile("temp-config", ".json");
         File configFile = getConfigFile(singletonList(planCheckerRouterConfig.getNativeRouterURI()), tempFile.toFile());
@@ -146,7 +149,7 @@ public class TestPlanCheckerRouterPlugin
             for (String query : queries) {
                 runQuery(query, httpServerUri);
             }
-            assertEquals(RequestStats.getInstance().getNativeClusterRedirectRequests().getTotalCount(), queries.size());
+            assertEquals(requestStats.getNativeClusterRedirectRequests().getTotalCount(), queries.size());
         }
     }
 
@@ -161,7 +164,7 @@ public class TestPlanCheckerRouterPlugin
             }
             // testFailingQueriesOnBothClusters() test case will run before this.
             // Since all the queries are failing on a native plan checker cluster, we redirect them to a java cluster and will count as a Java cluster redirect.
-            assertEquals(RequestStats.getInstance().getJavaClusterRedirectRequests().getTotalCount(), queries.size() + getFailingQueriesOnBothClustersProvider().length);
+            assertEquals(requestStats.getJavaClusterRedirectRequests().getTotalCount(), queries.size() + getFailingQueriesOnBothClustersProvider().length);
         }
     }
 

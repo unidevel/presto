@@ -22,7 +22,6 @@ public class RequestStats
 {
     private final CounterStat javaClusterRedirectRequests = new CounterStat();
     private final CounterStat nativeClusterRedirectRequests = new CounterStat();
-    private static final RequestStats INSTANCE = new RequestStats();
 
     @Managed
     @Nested
@@ -46,10 +45,5 @@ public class RequestStats
     public void updateNativeRequests(long count)
     {
         nativeClusterRedirectRequests.update(count);
-    }
-
-    public static final RequestStats getInstance()
-    {
-        return INSTANCE;
     }
 }
