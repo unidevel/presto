@@ -149,7 +149,7 @@ public class TestPlanCheckerRouterPlugin
             for (String query : queries) {
                 runQuery(query, httpServerUri);
             }
-            assertEquals(requestStats.getNativeClusterRedirectRequests().getTotalCount(), queries.size());
+            assertEquals(requestStats.getNativeClusterRedirectRequestsTotalCount(), queries.size());
         }
     }
 
@@ -164,7 +164,7 @@ public class TestPlanCheckerRouterPlugin
             }
             // testFailingQueriesOnBothClusters() test case will run before this.
             // Since all the queries are failing on a native plan checker cluster, we redirect them to a java cluster and will count as a Java cluster redirect.
-            assertEquals(requestStats.getJavaClusterRedirectRequests().getTotalCount(), queries.size() + getFailingQueriesOnBothClustersProvider().length);
+            assertEquals(requestStats.getJavaClusterRedirectRequestsTotalCount(), queries.size() + getFailingQueriesOnBothClustersProvider().length);
         }
     }
 

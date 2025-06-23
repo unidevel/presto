@@ -15,28 +15,14 @@
 package com.facebook.presto.router.scheduler;
 
 import com.facebook.airlift.stats.CounterStat;
-import org.weakref.jmx.Managed;
-import org.weakref.jmx.Nested;
 
 public class RequestStats
+        implements RequestStatsMBean
 {
     private final CounterStat javaClusterRedirectRequests = new CounterStat();
     private final CounterStat nativeClusterRedirectRequests = new CounterStat();
 
-    @Managed
-    @Nested
-    public CounterStat getJavaClusterRedirectRequests()
-    {
-        return javaClusterRedirectRequests;
-    }
-
-    @Managed
-    @Nested
-    public CounterStat getNativeClusterRedirectRequests()
-    {
-        return nativeClusterRedirectRequests;
-    }
-
+    // --- Updaters ---
     public void updateJavaRequests(long count)
     {
         javaClusterRedirectRequests.update(count);
@@ -45,5 +31,91 @@ public class RequestStats
     public void updateNativeRequests(long count)
     {
         nativeClusterRedirectRequests.update(count);
+    }
+
+    // --- Java Cluster Metrics ---
+    @Override
+    public double getJavaClusterRedirectRequestsOneMinuteCount()
+    {
+        return javaClusterRedirectRequests.getOneMinute().getCount();
+    }
+
+    @Override
+    public double getJavaClusterRedirectRequestsOneMinuteRate()
+    {
+        return javaClusterRedirectRequests.getFiveMinute().getRate();
+    }
+
+    @Override
+    public double getJavaClusterRedirectRequestsFiveMinuteCount()
+    {
+        return javaClusterRedirectRequests.getFiveMinute().getCount();
+    }
+
+    @Override
+    public double getJavaClusterRedirectRequestsFiveMinuteRate()
+    {
+        return javaClusterRedirectRequests.getFiveMinute().getRate();
+    }
+
+    @Override
+    public double getJavaClusterRedirectRequestsFifteenMinuteCount()
+    {
+        return javaClusterRedirectRequests.getFifteenMinute().getCount();
+    }
+
+    @Override
+    public double getJavaClusterRedirectRequestsFifteenMinuteRate()
+    {
+        return javaClusterRedirectRequests.getFifteenMinute().getRate();
+    }
+
+    @Override
+    public long getJavaClusterRedirectRequestsTotalCount()
+    {
+        return javaClusterRedirectRequests.getTotalCount();
+    }
+
+    // --- Native Cluster Metrics ---
+    @Override
+    public double getNativeClusterRedirectRequestsOneMinuteCount()
+    {
+        return nativeClusterRedirectRequests.getOneMinute().getCount();
+    }
+
+    @Override
+    public double getNativeClusterRedirectRequestsOneMinuteRate()
+    {
+        return nativeClusterRedirectRequests.getOneMinute().getRate();
+    }
+
+    @Override
+    public double getNativeClusterRedirectRequestsFiveMinuteCount()
+    {
+        return nativeClusterRedirectRequests.getFiveMinute().getCount();
+    }
+
+    @Override
+    public double getNativeClusterRedirectRequestsFiveMinuteRate()
+    {
+        return nativeClusterRedirectRequests.getFiveMinute().getRate();
+    }
+
+    @Override
+    public double getNativeClusterRedirectRequestsFifteenMinuteCount()
+    {
+        return nativeClusterRedirectRequests.getFifteenMinute().getCount();
+    }
+
+    @Override
+    public double getNativeClusterRedirectRequestsFifteenMinuteRate()
+    {
+        return nativeClusterRedirectRequests.getFifteenMinute().getRate();
+    }
+
+    @Override
+    public long getNativeClusterRedirectRequestsTotalCount()
+    {
+        return nativeClusterRedirectRequests.getTotalCount();
     }
 }
