@@ -1,0 +1,51 @@
+services:
+  presto-javadev:
+    image: prestodb/presto-javadev:centos9
+    volumes:
+      - ../:/usr/local/src/presto
+    stdin_open: true
+    tty: true
+    build:
+      context: ..
+      dockerfile: docker/centosdev.dockerfile
+      target: presto-javadev
+
+  presto-nativedev:
+    image: prestodb/presto-nativedev:centos9
+    build:
+      context: ..
+      dockerfile: docker/centosdev.dockerfile
+      args:
+        - BASE_IMAGE=prestodb/presto-javadev:centos9
+        - EXTRA_CMAKE_FLAGS=-DPRESTO_ENABLE_PARQUET=ON
+                            -DPRESTO_ENABLE_TESTING=ON
+                            -DPRESTO_ENABLE_S3=ON
+                            -DPRESTO_ENABLE_PARQUET=ON
+                            -DPRESTO_ENABLE_GCS=ON
+                            -DPRESTO_ENABLE_ABFS=OFF
+                            -DPRESTO_ENABLE_HDFS=ON
+                            -DPRESTO_ENABLE_REMOTE_FUNCTIONS=ON
+                            -DPRESTO_ENABLE_JWT=ON
+                            -DPRESTO_STATS_REPORTER_TYPE=PROMETHEUS
+                            -DPRESTO_MEMORY_CHECKER_TYPE=LINUX_MEMORY_CHECKER
+                            -DPRESTO_ENABLE_SPATIAL=ON
+                            -DVELOX_BUILD_TESTING=ON
+    volumes:
+      - ../:/usr/local/src/presto
+    stdin_open: true
+    tty: true
+    command: >
+      bash -c "git config --global --add safe.directory /usr/local/src/presto && git config --global --add safe.directory /usr/local/src/presto/presto-native-execution/velox && ccache -sz -v && exec bash -i"
+
+
+  prestodev-runtime:
+    image: prestodb/prestodev-runtime:latest
+    build:
+      args:
+        - NUM_THREADS=2 # default value for NUM_THREADS
+        - EXTRA_CMAKE_FLAGS=-DPRESTO_ENABLE_TESTING=OFF
+                            -DPRESTO_ENABLE_PARQUET=ON
+                            -DPRESTO_ENABLE_S3=ON
+                            -DPRESTO_ENABLE_CUDF=${GPU:-OFF}
+      context: .
+      dockerfile: dockerfiles/prestodev-runtime.dockerfile
