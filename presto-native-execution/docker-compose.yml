@@ -38,6 +38,19 @@ services:
       context: .
       dockerfile: scripts/dockerfiles/prestissimo-runtime.dockerfile
 
+  ubuntu-dev:
+    # Usage:
+    #   docker compose build ubuntu-dev
+    #   podman compose build ubuntu-dev
+    image: presto/prestissimo-runtime:ubuntu-22.04
+    stdin_open: true
+    tty: true
+    volumes:
+      - ..:/presto
+    working_dir: /presto/presto-native-execution
+    command: >
+      bash -c "git config --global --add safe.directory /presto && git config --global --add safe.directory /presto/presto-native-execution/velox && ccache -sz -v && exec bash -i"
+
   centos-native-dependency:
     # Usage:
     #   docker compose build centos-native-dependency
