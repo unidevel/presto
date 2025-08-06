@@ -42,14 +42,27 @@ services:
     # Usage:
     #   docker compose build ubuntu-dev
     #   podman compose build ubuntu-dev
-    image: presto/prestissimo-runtime:ubuntu-22.04
+    image: presto/prestissimo-dev:ubuntu-22.04
+    build:
+      args:
+          # A few files in Velox require significant memory to compile and link.
+          # Build requires 18GB of memory for 2 threads.
+        - NUM_THREADS=2 # default value for NUM_THREADS.
+        - DEPENDENCY_IMAGE=presto/prestissimo-dependency:ubuntu-22.04
+        - BASE_IMAGE=ubuntu:22.04
+        - OSNAME=ubuntu
+        - EXTRA_CMAKE_FLAGS=-DPRESTO_ENABLE_TESTING=OFF
+                            -DPRESTO_ENABLE_PARQUET=ON
+                            -DPRESTO_ENABLE_S3=ON
+      context: .
+      dockerfile: scripts/dockerfiles/prestissimo-runtime.dockerfile
+      target: prestissimo-image
     stdin_open: true
     tty: true
     volumes:
       - ..:/presto
     working_dir: /presto/presto-native-execution
-    command: >
-      bash -c "git config --global --add safe.directory /presto && git config --global --add safe.directory /presto/presto-native-execution/velox && ccache -sz -v && exec bash -i"
+    command: bash
 
   centos-native-dependency:
     # Usage:
@@ -75,3 +88,32 @@ services:
                             -DPRESTO_ENABLE_S3=ON
       context: .
       dockerfile: scripts/dockerfiles/prestissimo-runtime.dockerfile
+      target: prestissimo-runtime
+
+
+  centos-dev:
+    # Usage:
+    #   docker compose build ubuntu-dev
+    #   podman compose build ubuntu-dev
+    image: presto/prestissimo-dev:centos9
+    build:
+      args:
+          # A few files in Velox require significant memory to compile and link.
+          # Build requires 18GB of memory for 2 threads.
+        - NUM_THREADS=2 # default value for NUM_THREADS.
+        - DEPENDENCY_IMAGE=presto/prestissimo-dependency:ubuntu-22.04
+        - BASE_IMAGE=ubuntu:22.04
+        - OSNAME=ubuntu
+        - EXTRA_CMAKE_FLAGS=-DPRESTO_ENABLE_TESTING=OFF
+                            -DPRESTO_ENABLE_PARQUET=ON
+                            -DPRESTO_ENABLE_S3=ON
+      context: .
+      dockerfile: scripts/dockerfiles/prestissimo-runtime.dockerfile
+      target: prestissimo-dev
+    stdin_open: true
+    tty: true
+    volumes:
+      - ..:/presto
+    working_dir: /presto/presto-native-execution
+    command: >
+      bash -c "git config --global --add safe.directory /presto && git config --global --add safe.directory /presto/presto-native-execution/velox && ccache -sz -v && exec bash -i"
