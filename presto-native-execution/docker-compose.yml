@@ -16,6 +16,9 @@ services:
     #   podman compose build ubuntu-native-dependency
     image: presto/prestissimo-dependency:ubuntu-22.04
     build:
+      args:
+      - WGET_OPTIONS=-c
+      - CURL_OPTIONS=-C -
       context: .
       dockerfile: scripts/dockerfiles/ubuntu-22.04-dependency.dockerfile
 
@@ -44,6 +47,9 @@ services:
     #   podman compose build centos-native-dependency
     image: presto/prestissimo-dependency:centos9
     build:
+      args:
+      - WGET_OPTIONS=-c
+      - CURL_OPTIONS=-C -
       context: .
       dockerfile: scripts/dockerfiles/centos-dependency.dockerfile
 

@@ -1,0 +1,151 @@
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+#
+#     http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
+services:
+  ubuntu-cpp-dev:
+    # Usage:
+    #   docker compose build ubuntu-cpp-dev
+    #   podman compose build ubuntu-cpp-dev
+    #   docker compose run --rm -it --service-ports ubuntu-cpp-dev
+    #   podman compose run --rm -it --service-ports ubuntu-cpp-dev
+    image: presto/presto-dev:ubuntu-22.04
+    build:
+      args:
+          # A few files in Velox require significant memory to compile and link.
+          # Build requires 18GB of memory for 2 threads.
+        - NUM_THREADS=2 # default value for NUM_THREADS.
+        - DEPENDENCY_IMAGE=presto/prestissimo-dependency:ubuntu-22.04
+        - BASE_IMAGE=ubuntu:22.04
+        - OSNAME=ubuntu
+        - ARM_BUILD_TARGET=notlocal
+        - EXTRA_CMAKE_FLAGS=-DPRESTO_ENABLE_TESTING=ON
+                            -DPRESTO_ENABLE_PARQUET=ON
+                            -DPRESTO_ENABLE_S3=ON
+                            -DPRESTO_ENABLE_REMOTE_FUNCTIONS=ON
+                            -DPRESTO_ENABLE_JWT=ON
+                            -DPRESTO_STATS_REPORTER_TYPE=PROMETHEUS
+                            -DPRESTO_MEMORY_CHECKER_TYPE=LINUX_MEMORY_CHECKER
+                            -DPRESTO_ENABLE_SPATIAL=ON
+      context: ..
+      dockerfile: docker/Dockerfile-cpp-dev
+    stdin_open: true
+    tty: true
+    volumes:
+      - ..:/presto
+    working_dir: /presto/presto-native-execution
+    ports:
+    - 8080:8080
+    - 7777:7777
+    command: bash
+
+  centos-cpp-dev:
+    # Usage:
+    #   docker compose build centos-cpp-dev
+    #   podman compose build centos-cpp-dev
+    #   docker compose run --rm -it --service-ports centos-cpp-dev
+    #   podman compose run --rm -it --service-ports centos-cpp-dev
+    image: presto/presto-cpp-dev:centos9
+    build:
+      args:
+          # A few files in Velox require significant memory to compile and link.
+          # Build requires 18GB of memory for 2 threads.
+        # - NUM_THREADS=2 # default value for NUM_THREADS.
+        - DEPENDENCY_IMAGE=presto/prestissimo-dependency:centos9
+        - ARM_BUILD_TARGET=notlocal
+        - EXTRA_CMAKE_FLAGS=-DPRESTO_ENABLE_TESTING=ON
+                            -DPRESTO_ENABLE_PARQUET=ON
+                            -DPRESTO_ENABLE_S3=ON
+                            -DPRESTO_ENABLE_REMOTE_FUNCTIONS=ON
+                            -DPRESTO_ENABLE_JWT=ON
+                            -DPRESTO_STATS_REPORTER_TYPE=PROMETHEUS
+                            -DPRESTO_MEMORY_CHECKER_TYPE=LINUX_MEMORY_CHECKER
+                            -DPRESTO_ENABLE_SPATIAL=ON
+                            -DVELOX_ENABLE_SPARK=ON
+        #                    -DVELOX_BUILD_TESTING=ON
+        #                    -DARROW_JEMALLOC=OFF
+        #                    -DVELOX_ENABLE_SPARK_FUNCTIONS=ON
+      context: ..
+      dockerfile: docker/Dockerfile-cpp-dev
+    stdin_open: true
+    tty: true
+    volumes:
+      - ..:/presto
+    working_dir: /presto/presto-native-execution
+    ports:
+    - 8080:8080
+    - 7777:7777
+    command: bash
+
+  ubuntu-dev:
+    # Usage:
+    #   docker compose build ubuntu-dev
+    #   podman compose build ubuntu-dev
+    #   docker compose run --rm -it --service-ports ubuntu-dev
+    #   podman compose run --rm -it --service-ports ubuntu-dev
+    image: presto/presto-dev:ubuntu-22.04
+    build:
+      context: ..
+      dockerfile: docker/Dockerfile-dev
+      target: ubuntu-dev
+    stdin_open: true
+    tty: true
+    volumes:
+      - ..:/presto
+    working_dir: /presto
+    ports:
+    - 8080:8080
+    - 7777:7777
+    command: bash
+
+  centos-java-dev:
+    # Usage:
+    #   docker compose build centos-dev
+    #   podman compose build centos-dev
+    #   docker compose run --rm -it --service-ports centos-dev
+    #   podman compose run --rm -it --service-ports centos-dev
+    image: presto/presto-dev:centos9
+    build:
+      args:
+      - DEPENDENCY_IMAGE=quay.io/centos/centos:stream9
+      context: ..
+      dockerfile: docker/Dockerfile-dev
+      target: centos-dev
+    stdin_open: true
+    tty: true
+    volumes:
+      - ..:/presto
+    working_dir: /presto/presto-native-execution
+    ports:
+    - 8080:8080
+    - 7777:7777
+    command: bash
+  centos-dev:
+    # Usage:
+    #   docker compose build centos-dev
+    #   podman compose build centos-dev
+    #   docker compose run --rm -it --service-ports centos-dev
+    #   podman compose run --rm -it --service-ports centos-dev
+    image: presto/presto-dev:centos9
+    build:
+      args:
+      - BASE_IMAGE=presto/presto-cpp-dev:centos9
+      context: ..
+      dockerfile: docker/Dockerfile-dev
+      target: centos-dev
+    stdin_open: true
+    tty: true
+    volumes:
+      - ..:/presto
+    working_dir: /presto/presto-native-execution
+    ports:
+    - 8080:8080
+    - 7777:7777
+    command: bash

@@ -1,0 +1,198 @@
+name: Presto Dev Images
+
+on:
+  workflow_dispatch:
+    inputs:
+      prebuild_centos_dependency_image:
+        description: 'Prebuilt CentOS dependency image (e.g., org/presto-centos-dependency:tag)'
+        type: string
+        required: false
+        default: ''
+      prebuild_ubuntu_dependency_image:
+        description: 'Prebuilt Ubuntu dependency image (e.g., org/presto-ubuntu-dependency:tag)'
+        type: string
+        required: false
+        default: ''
+      publish_centos_image:
+        description: 'Build and publish centos development image'
+        type: boolean
+        default: true
+        required: false
+      publish_ubuntu_image:
+        description: 'Build and publish ubuntu development image'
+        type: boolean
+        default: true
+        required: false
+      tag_image_as_latest:
+        description: 'Tag the published images as latest'
+        type: boolean
+        default: true
+        required: false
+env:
+  JAVA_VERSION: ${{ vars.JAVA_VERSION || '17' }}
+  JAVA_DISTRIBUTION: ${{ vars.JAVA_DISTRIBUTION || 'temurin' }}
+  MAVEN_OPTS: ${{ vars.MAVEN_OPTS }}
+  DOCKER_REPO: ${{ github.repository }}
+  ORG_NAME: ${{ github.repository_owner }}
+  RELEASE_BRANCH: release-${{ inputs.RELEASE_VERSION }}
+  RELEASE_TAG: ${{ inputs.RELEASE_VERSION }}
+  RELEASE_NOTES_COMMIT: ${{ inputs.release-notes-commit }}
+
+jobs:
+  publish-centos-images:
+    runs-on: ubuntu-latest
+    if: ${{ github.event.inputs.publish_centos_image == 'true' }}
+    environment: release
+    timeout-minutes: 900
+    steps:
+      - name: Free disk space
+        uses: jlumbroso/free-disk-space@v1.3.1
+        with:
+          tool-cache: false
+          docker-images: false
+
+      - name: Set up JDK ${{ env.JAVA_DISTRIBUTION }}/${{ env.JAVA_VERSION }}
+        uses: actions/setup-java@v4
+        with:
+          java-version: ${{ env.JAVA_VERSION }}
+          distribution: ${{ env.JAVA_DISTRIBUTION }}
+
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Get presto release version
+        run: |
+          PRESTO_VERSION=$(mvn org.apache.maven.plugins:maven-help-plugin:3.2.0:evaluate \
+            -Dexpression=project.version -q -ntp -DforceStdout | tail -n 1)
+          echo "RELEASE_TAG=$PRESTO_VERSION" >> $GITHUB_ENV
+
+      - name: Initialize prestissimo submodules
+        working-directory: presto-native-execution
+        run: |
+          df -h
+          cd ${{ github.workspace }}/presto-native-execution && make submodules
+          echo "COMMIT_SHA=$(git rev-parse --short HEAD)" >> $GITHUB_ENV
+
+      - name: Login to dockerHub
+        uses: docker/login-action@v3
+        with:
+          username: ${{ secrets.DOCKERHUB_USERNAME }}
+          password: ${{ secrets.DOCKERHUB_TOKEN }}
+
+      - name: Build centos dependency image
+        working-directory: presto-native-execution
+        run: |
+          df -h
+          if [[ -n "${{ github.event.inputs.prebuild_centos_dependency_image }}" ]]; then
+            echo "Pulling prebuilt CentOS dependency image: ${{ github.event.inputs.prebuild_centos_dependency_image }}"
+            docker pull ${{ github.event.inputs.prebuild_centos_dependency_image }}
+            docker tag ${{ github.event.inputs.prebuild_centos_dependency_image }} presto/prestissimo-dependency:centos9
+          else
+            docker compose build centos-native-dependency
+            docker tag presto/prestissimo-dependency:centos9 ${{ github.repository_owner }}/presto-centos-dependency:${{ env.RELEASE_TAG }}-${{ env.COMMIT_SHA }}
+            docker push ${{ github.repository_owner }}/presto-centos-dependency:${{ env.RELEASE_TAG }}-${{ env.COMMIT_SHA }}
+            if [[ "${{ github.event.inputs.tag_image_as_latest }}" == "true" ]]; then
+              docker tag presto/prestissimo-dependency:centos9 ${{ github.repository_owner }}/presto-centos-dependency:latest
+              docker push ${{ github.repository_owner }}/presto-centos-dependency:latest
+            fi
+          fi
+          docker images
+
+      - name: Build centos dev images
+        working-directory: docker
+        run: |
+          df -h
+          docker compose build centos-dev
+          docker images
+
+      - name: Publish centos dev images
+        working-directory: docker
+        run: |
+          df -h
+          docker tag presto/presto-dev:centos9 ${{ env.ORG_NAME }}/presto-centos-dev:${{env.RELEASE_TAG }}
+          docker push ${{ env.ORG_NAME }}/presto-centos-dev:${{ env.RELEASE_TAG }}
+          if [[ "${{ github.event.inputs.tag_image_as_latest }}" == "true" ]]; then
+            docker tag presto/presto-dev:centos9 ${{ env.ORG_NAME }}/presto-centos-dev:latest
+            docker push ${{ env.ORG_NAME }}/presto-centos-dev:latest
+          fi
+          docker images
+
+  publish-ubuntu-images:
+    runs-on: ubuntu-latest
+    if: ${{ github.event.inputs.publish_ubuntu_image == 'true' }}
+    environment: release
+    timeout-minutes: 900
+    steps:
+      - name: Free disk space
+        uses: jlumbroso/free-disk-space@v1.3.1
+        with:
+          tool-cache: false
+          docker-images: false
+
+      - name: Set up JDK ${{ env.JAVA_DISTRIBUTION }}/${{ env.JAVA_VERSION }}
+        uses: actions/setup-java@v4
+        with:
+          java-version: ${{ env.JAVA_VERSION }}
+          distribution: ${{ env.JAVA_DISTRIBUTION }}
+
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Get presto release version
+        run: |
+          PRESTO_VERSION=$(mvn org.apache.maven.plugins:maven-help-plugin:3.2.0:evaluate \
+            -Dexpression=project.version -q -ntp -DforceStdout | tail -n 1)
+          echo "RELEASE_TAG=$PRESTO_VERSION" >> $GITHUB_ENV
+
+      - name: Initialize prestissimo submodules
+        working-directory: presto-native-execution
+        run: |
+          df -h
+          cd ${{ github.workspace }}/presto-native-execution && make submodules
+          echo "COMMIT_SHA=$(git rev-parse --short HEAD)" >> $GITHUB_ENV
+
+      - name: Login to dockerHub
+        uses: docker/login-action@v3
+        with:
+          username: ${{ secrets.DOCKERHUB_USERNAME }}
+          password: ${{ secrets.DOCKERHUB_TOKEN }}
+
+      - name: Build ubuntu dependency image
+        working-directory: presto-native-execution
+        run: |
+          df -h
+          if [[ -n "${{ github.event.inputs.prebuild_ubuntu_dependency_image }}" ]]; then
+            echo "Pulling prebuilt Ubuntu dependency image: ${{ github.event.inputs.prebuild_ubuntu_dependency_image }}"
+            docker pull ${{ github.event.inputs.prebuild_ubuntu_dependency_image }}
+            docker tag ${{ github.event.inputs.prebuild_ubuntu_dependency_image }} presto/prestissimo-dependency:ubuntu-22.04
+          else
+            docker compose build ubuntu-native-dependency
+            docker tag presto/prestissimo-dependency:ubuntu-22.04 ${{ github.repository_owner }}/presto-ubuntu-dependency:${{ env.RELEASE_TAG }}-${{ env.COMMIT_SHA }}
+            docker push ${{ github.repository_owner }}/presto-ubuntu-dependency:${{ env.RELEASE_TAG }}-${{ env.COMMIT_SHA }}
+            if [[ "${{ github.event.inputs.tag_image_as_latest }}" == "true" ]]; then
+              docker tag presto/prestissimo-dependency:ubuntu-22.04 ${{ github.repository_owner }}/presto-ubuntu-dependency:latest
+              docker push ${{ github.repository_owner }}/presto-ubuntu-dependency:latest
+            fi
+          fi
+          docker images
+
+      - name: Build ubuntu dev Image
+        if: ${{ github.event.inputs.publish_ubuntu_image }}
+        working-directory: docker
+        run: |
+          df -h
+          docker compose build ubuntu-dev
+          docker images
+
+      - name: Publish ubuntu dev images
+        if: ${{ github.event.inputs.publish_ubuntu_image }}
+        working-directory: docker
+        run: |
+          df -h
+          docker tag presto/presto-dev:ubuntu-22.04 ${{ env.ORG_NAME }}/presto-ubuntu-dev:${{env.RELEASE_TAG }}
+          docker push ${{ env.ORG_NAME }}/presto-ubuntu-dev:${{ env.RELEASE_TAG }}
+          if [[ "${{ github.event.inputs.tag_image_as_latest }}" == "true" ]]; then
+            docker tag presto/presto-dev:ubuntu-22.04 ${{ env.ORG_NAME }}/presto-ubuntu-dev:latest
+            docker push ${{ env.ORG_NAME }}/presto-ubuntu-dev:latest
+          fi
+          docker images
