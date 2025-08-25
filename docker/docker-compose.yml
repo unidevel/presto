@@ -16,7 +16,7 @@ services:
     #   podman compose build ubuntu-cpp-dev
     #   docker compose run --rm -it --service-ports ubuntu-cpp-dev
     #   podman compose run --rm -it --service-ports ubuntu-cpp-dev
-    image: presto/presto-dev:ubuntu-22.04
+    image: presto/presto-cpp-dev:ubuntu-22.04
     build:
       args:
           # A few files in Velox require significant memory to compile and link.
@@ -34,6 +34,9 @@ services:
                             -DPRESTO_STATS_REPORTER_TYPE=PROMETHEUS
                             -DPRESTO_MEMORY_CHECKER_TYPE=LINUX_MEMORY_CHECKER
                             -DPRESTO_ENABLE_SPATIAL=ON
+                            -DVELOX_ENABLE_SPARK=ON
+                            -DVELOX_ENABLE_SPARK_FUNCTIONS=ON
+                            #-DVELOX_BUILD_TESTING=ON
       context: ..
       dockerfile: docker/Dockerfile-cpp-dev
     stdin_open: true
@@ -69,9 +72,8 @@ services:
                             -DPRESTO_MEMORY_CHECKER_TYPE=LINUX_MEMORY_CHECKER
                             -DPRESTO_ENABLE_SPATIAL=ON
                             -DVELOX_ENABLE_SPARK=ON
-        #                    -DVELOX_BUILD_TESTING=ON
-        #                    -DARROW_JEMALLOC=OFF
-        #                    -DVELOX_ENABLE_SPARK_FUNCTIONS=ON
+                            -DVELOX_ENABLE_SPARK_FUNCTIONS=ON
+  #                          -DVELOX_BUILD_TESTING=ON
       context: ..
       dockerfile: docker/Dockerfile-cpp-dev
     stdin_open: true
@@ -93,6 +95,8 @@ services:
     image: presto/presto-dev:ubuntu-22.04
     build:
       context: ..
+      args:
+      - BASE_IMAGE=presto/presto-cpp-dev:ubuntu-22.04
       dockerfile: docker/Dockerfile-dev
       target: ubuntu-dev
     stdin_open: true

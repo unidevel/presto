@@ -26,7 +26,7 @@ ENV EXTRA_CMAKE_FLAGS=${EXTRA_CMAKE_FLAGS}
 ENV BUILD_ROOT=/presto
 ENV PRESTISSIMO_HOME=/opt/prestissimo
 
-RUN --mount=type=bind,source=.,target=${BUILD_ROOT},readonly=false \
+RUN --mount=type=bind,source=.,target=${BUILD_ROOT},rw \
     --mount=type=cache,target=/root/ccache-${OSNAME} \
     echo "[safe]" > /root/.gitconfig && \
     echo "  directory = ${BUILD_ROOT}" >> /root/.gitconfig && \
@@ -34,13 +34,7 @@ RUN --mount=type=bind,source=.,target=${BUILD_ROOT},readonly=false \
     cat /root/.gitconfig && \
     export CCACHE_DIR=/root/ccache-${OSNAME} && \
     cd ${BUILD_ROOT}/presto-native-execution && \
-    #make debug && df -h && \
-    # make clean && \
     make release && df -h && \
-    # EXTRA_CMAKE_FLAGS=${EXTRA_CMAKE_FLAGS} NUM_THREADS=${NUM_THREADS} \
-    #     make --directory="${BUILD_ROOT}/presto-native-execution" cmake-and-build BUILD_TYPE=Release BUILD_DIR=release BUILD_BASE_DIR=${BUILD_BASE_DIR} && \
-    # EXTRA_CMAKE_FLAGS=${EXTRA_CMAKE_FLAGS} NUM_THREADS=${NUM_THREADS} \
-    #     make --directory="${BUILD_ROOT}/presto-native-execution" cmake-and-build BUILD_TYPE=Debug BUILD_DIR=debug BUILD_BASE_DIR=${BUILD_BASE_DIR} && \
     mkdir -p ${PRESTISSIMO_HOME}/bin && \
     mkdir -p ${PRESTISSIMO_HOME}/lib && \
     !(LD_LIBRARY_PATH=${LD_LIBRARY_PATH}:/usr/local/lib:/usr/local/lib64 ldd ${BUILD_ROOT}/presto-native-execution/${BUILD_BASE_DIR}/release/presto_cpp/main/presto_server  | grep "not found") && \

@@ -32,12 +32,10 @@ COPY velox/scripts /velox/scripts
 COPY velox/CMake/resolve_dependency_modules/arrow/cmake-compatibility.patch /velox
 ENV VELOX_ARROW_CMAKE_PATCH=/velox/cmake-compatibility.patch
 # install rpm needed for minio install.
-RUN --mount=type=cache,target=/deps-download,sharing=locked \
-    --mount=type=cache,target=/var/cache/apt,sharing=locked \
-    mkdir -p build && cp -a /deps-download build/ && apt update && apt install -y sudo && \
+RUN --mount=type=cache,target=/var/cache/apt,sharing=locked \
+    mkdir -p build && apt update && apt install -y sudo && \
     (cd build && ../scripts/setup-ubuntu.sh && \
                          apt install -y rpm && \
                  ../velox/scripts/setup-ubuntu.sh install_adapters && \
                  ../scripts/setup-adapters.sh ) && \
-    cp -a build/deps-download/* /deps-download/ && \
     rm -rf build

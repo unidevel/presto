@@ -35,7 +35,7 @@ RUN --mount=type=cache,target=/var/cache/dnf,sharing=locked \
     rm -rf Python-${PYTHON_VERSION}
 
 RUN --mount=type=cache,target=/root/m2 \
-    --mount=type=bind,source=..,target=${BUILD_ROOT},readonly=false \
+    --mount=type=bind,source=..,target=${BUILD_ROOT},rw \
     cd /presto && \
     MAVEN_USER_HOME=/root/m2 ./mvnw clean install -Dmaven.repo.local=/root/m2/repository -DskipTests && \
     for dir in presto-*; do \
@@ -67,7 +67,7 @@ ENV PRESTO_HOME=/opt/presto \
 
 RUN --mount=type=cache,target=/var/cache/apt,sharing=locked \
     apt-get update && \
-    DEBIAN_FRONTEND=noninteractive apt-get install -y software-properties-common wget less procps git vim diffutils curl xz-utils openjdk-11-jre-headless && \
+    DEBIAN_FRONTEND=noninteractive apt-get install -y software-properties-common wget less procps git vim diffutils curl xz-utils openjdk-17-jdk-headless && \
     add-apt-repository ppa:deadsnakes/ppa && \
     apt-get update && \
     DEBIAN_FRONTEND=noninteractive apt-get install -y python3.11 python3.11-venv python3.11-distutils && \
@@ -76,7 +76,7 @@ RUN --mount=type=cache,target=/var/cache/apt,sharing=locked \
     python3 -m pip install cmake
 
 RUN --mount=type=cache,target=/root/m2 \
-    --mount=type=bind,source=..,target=${BUILD_ROOT},readonly=false \
+    --mount=type=bind,source=..,target=${BUILD_ROOT},rw \
     cd ${BUILD_ROOT} && \
     MAVEN_USER_HOME=/root/m2 ./mvnw clean install -Dmaven.repo.local=/root/m2/repository -DskipTests && \
     for dir in presto-*; do \

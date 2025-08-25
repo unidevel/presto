@@ -23,8 +23,7 @@ COPY velox/scripts /velox/scripts
 # from https://github.com/facebookincubator/velox/pull/14016
 COPY velox/CMake/resolve_dependency_modules/arrow/cmake-compatibility.patch /velox
 ENV VELOX_ARROW_CMAKE_PATCH=/velox/cmake-compatibility.patch
-RUN --mount=type=cache,target=/build/deps-download,sharing=locked \
-    --mount=type=cache,target=/var/cache/dnf,sharing=locked \
+RUN --mount=type=cache,target=/var/cache/dnf,sharing=locked \
     bash -c "mkdir -p build && \
     (cd build && ../scripts/setup-centos.sh && \
                  ../scripts/setup-adapters.sh && \
@@ -32,7 +31,7 @@ RUN --mount=type=cache,target=/build/deps-download,sharing=locked \
                  install_adapters && \
                  install_clang15 && \
                  install_cuda 12.8) && \
-    find build -mindepth 1 -path 'build/deps-download' -prune -o -exec rm -rf {} +"
+    rm -rf build"
 
 # put CUDA binaries on the PATH
 ENV PATH=/usr/local/cuda/bin:${PATH}
