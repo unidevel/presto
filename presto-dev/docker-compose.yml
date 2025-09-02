@@ -43,6 +43,7 @@ services:
     tty: true
     volumes:
       - ..:/presto
+      - ./root:/root
     working_dir: /presto/presto-native-execution
     ports:
     - 8080:8080
@@ -80,6 +81,7 @@ services:
     tty: true
     volumes:
       - ..:/presto
+      - ./root:/root
     working_dir: /presto/presto-native-execution
     ports:
     - 8080:8080
@@ -103,6 +105,7 @@ services:
     tty: true
     volumes:
       - ..:/presto
+      - ./root:/root
     working_dir: /presto
     ports:
     - 8080:8080
@@ -126,11 +129,13 @@ services:
     tty: true
     volumes:
       - ..:/presto
+      - ./root:/root
     working_dir: /presto/presto-native-execution
     ports:
     - 8080:8080
     - 7777:7777
     command: bash
+
   centos-dev:
     # Usage:
     #   docker compose build centos-dev
@@ -148,8 +153,10 @@ services:
     tty: true
     volumes:
       - ..:/presto
+      - ./root:/root
     working_dir: /presto/presto-native-execution
     ports:
     - 8080:8080
     - 7777:7777
     command: bash
+

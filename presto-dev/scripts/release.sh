@@ -4,7 +4,7 @@ set -e
 MODE=$1 # prepare or publish
 
 if [ -z "$MODE" ]; then
-  echo "Usage: $0 [prepare|publish]"
+  echo "Usage: $0 [prepare|publish|manifest-latest <os>]"
   exit 1
 fi
 
@@ -52,5 +52,20 @@ for IMAGE_INFO in "${IMAGES_TO_PROCESS[@]}"; do
     ${DOCKER_CMD:-docker} push "${NEW_TAG}"
   fi
 done
+
+if [ "$MODE" = "manifest-latest" ]; then
+  TARGET_OS=$2 # centos or ubuntu
+  echo "Creating multi-arch manifest for ${TARGET_OS}-latest..."
+
+  # Construct image names for amd64 and arm64
+  AMD64_IMAGE="${ORG}/presto-dev:${VERSION}-${COMMIT_ID}-${TARGET_OS}-amd64"
+  ARM64_IMAGE="${ORG}/presto-dev:${VERSION}-${COMMIT_ID}-${TARGET_OS}-arm64"
+  LATEST_TAG="${ORG}/presto-dev:${TARGET_OS}-latest"
+
+  ${DOCKER_CMD:-docker} manifest create ${LATEST_TAG} ${AMD64_IMAGE} ${ARM64_IMAGE}
+  ${DOCKER_CMD:-docker} manifest annotate ${LATEST_TAG} ${AMD64_IMAGE} --os linux --arch amd64
+  ${DOCKER_CMD:-docker} manifest annotate ${LATEST_TAG} ${ARM64_IMAGE} --os linux --arch arm64
+  ${DOCKER_CMD:-docker} manifest push ${LATEST_TAG}
+fi
 
 echo "Done."

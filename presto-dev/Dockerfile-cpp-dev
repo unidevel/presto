@@ -38,21 +38,22 @@ RUN --mount=type=bind,source=.,target=${BUILD_ROOT},rw \
       echo "Cleaning ccache folder: /root/ccache-${OSNAME}" && \
       rm -rf ${CCACHE_DIR}/* ; \
     fi && \
-    cd ${BUILD_ROOT}/presto-native-execution && \
-    make debug && df -h && \
-    make clean && \
-    make release && df -h && \
     mkdir -p ${PRESTISSIMO_HOME}/bin && \
     mkdir -p ${PRESTISSIMO_HOME}/lib && \
-    !(LD_LIBRARY_PATH=${LD_LIBRARY_PATH}:/usr/local/lib:/usr/local/lib64 ldd ${BUILD_ROOT}/presto-native-execution/${BUILD_BASE_DIR}/release/presto_cpp/main/presto_server  | grep "not found") && \
-    LD_LIBRARY_PATH=${LD_LIBRARY_PATH}:/usr/local/lib:/usr/local/lib64 ldd ${BUILD_ROOT}/presto-native-execution/${BUILD_BASE_DIR}/release/presto_cpp/main/presto_server | awk 'NF == 4 { system("cp " $3 " ${PRESTISSIMO_HOME}/lib") }' && \
-    cp ${BUILD_ROOT}/presto-native-execution/${BUILD_BASE_DIR}/release/presto_cpp/main/presto_server ${PRESTISSIMO_HOME}/bin/presto_server && \
+    cd ${BUILD_ROOT}/presto-native-execution && \
+    make release && df -h && \
+    make clean && \
+    make debug && df -h && \
+    !(LD_LIBRARY_PATH=${LD_LIBRARY_PATH}:/usr/local/lib:/usr/local/lib64 ldd ${BUILD_ROOT}/presto-native-execution/${BUILD_BASE_DIR}/debug/presto_cpp/main/presto_server  | grep "not found") && \
+    LD_LIBRARY_PATH=${LD_LIBRARY_PATH}:/usr/local/lib:/usr/local/lib64 ldd ${BUILD_ROOT}/presto-native-execution/${BUILD_BASE_DIR}/debug/presto_cpp/main/presto_server | awk 'NF == 4 { system("cp " $3 " ${PRESTISSIMO_HOME}/lib") }' && \
+    cp ${BUILD_ROOT}/presto-native-execution/${BUILD_BASE_DIR}/debug/presto_cpp/main/presto_server ${PRESTISSIMO_HOME}/bin/presto_server && \
     chmod 0755 ${PRESTISSIMO_HOME}/bin/presto_server && \
     echo "${PRESTISSIMO_HOME}/lib" > /etc/ld.so.conf.d/prestissimo.conf && ldconfig && \
     make clean && \
-    rm -rf /var/cache/ccache && rm -rf /root/.ccache && \
-    cp -r ${CCACHE_DIR} /var/cache/ccache && \
-    ln -sf /var/cache/ccache /root/.ccache && \
+    mkdir -p /var/cache/root && \
+    rm -rf /var/cache/root/.ccache && rm -rf /root/.ccache && \
+    cp -r ${CCACHE_DIR} /var/cache/root/.ccache && \
+    ln -sf /var/cache/root/.ccache /root/.ccache && \
     ccache -sz -v
 
 COPY --chmod=0755 presto-dev/prestissimo/etc $PRESTISSIMO_HOME/etc
