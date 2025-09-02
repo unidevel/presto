@@ -1,0 +1,23 @@
+{
+  "version": "0.2.0",
+  "configurations": [{
+    "name": "Attach to prestissimo",
+    "type": "cppdbg",
+    "request": "attach",
+    "program": "/opt/prestissimo/bin/presto_server",
+    "processId": "${command:pickProcess}",
+    "MIMode": "gdb",
+    "setupCommands": [{
+      "description": "Enable pretty-printing for gdb",
+      "text": "-enable-pretty-printing",
+      "ignoreFailures": true
+    }]
+  }, {
+    "name": "Attach to presto",
+    "type": "java",
+    "projectName": "presto",
+    "request": "attach",
+    "hostName": "localhost",
+    "port": 9999
+  }]
+}
