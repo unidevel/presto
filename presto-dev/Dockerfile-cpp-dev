@@ -18,6 +18,7 @@ ARG OSNAME=centos
 ARG EXTRA_CMAKE_FLAGS=''
 ARG NUM_THREADS=8
 ARG ARM_BUILD_TARGET=''
+ARG CLEAN_CACHE
 
 ENV PROMPT_ALWAYS_RESPOND=n
 ENV BUILD_BASE_DIR=_build
@@ -33,14 +34,14 @@ RUN --mount=type=bind,source=.,target=${BUILD_ROOT},rw \
     echo "  directory = ${BUILD_ROOT}/presto-native-execution/velox" >> /root/.gitconfig && \
     cat /root/.gitconfig && \
     export CCACHE_DIR=/root/ccache-${OSNAME} && \
+    if [ "${CLEAN_CACHE}" = "true" ]; then \
+      echo "Cleaning ccache folder: /root/ccache-${OSNAME}" && \
+      rm -rf ${CCACHE_DIR}/* ; \
+    fi && \
     cd ${BUILD_ROOT}/presto-native-execution && \
     make debug && df -h && \
     make clean && \
     make release && df -h && \
-    # EXTRA_CMAKE_FLAGS=${EXTRA_CMAKE_FLAGS} NUM_THREADS=${NUM_THREADS} \
-    #     make --directory="${BUILD_ROOT}/presto-native-execution" cmake-and-build BUILD_TYPE=Release BUILD_DIR=release BUILD_BASE_DIR=${BUILD_BASE_DIR} && \
-    # EXTRA_CMAKE_FLAGS=${EXTRA_CMAKE_FLAGS} NUM_THREADS=${NUM_THREADS} \
-    #     make --directory="${BUILD_ROOT}/presto-native-execution" cmake-and-build BUILD_TYPE=Debug BUILD_DIR=debug BUILD_BASE_DIR=${BUILD_BASE_DIR} && \
     mkdir -p ${PRESTISSIMO_HOME}/bin && \
     mkdir -p ${PRESTISSIMO_HOME}/lib && \
     !(LD_LIBRARY_PATH=${LD_LIBRARY_PATH}:/usr/local/lib:/usr/local/lib64 ldd ${BUILD_ROOT}/presto-native-execution/${BUILD_BASE_DIR}/release/presto_cpp/main/presto_server  | grep "not found") && \
@@ -49,13 +50,10 @@ RUN --mount=type=bind,source=.,target=${BUILD_ROOT},rw \
     chmod 0755 ${PRESTISSIMO_HOME}/bin/presto_server && \
     echo "${PRESTISSIMO_HOME}/lib" > /etc/ld.so.conf.d/prestissimo.conf && ldconfig && \
     make clean && \
-    cd /root && cp -r ${CCACHE_DIR} .ccache && \
+    rm -rf /var/cache/ccache && rm -rf /root/.ccache && \
+    cp -r ${CCACHE_DIR} /var/cache/ccache && \
+    ln -sf /var/cache/ccache /root/.ccache && \
     ccache -sz -v
 
-COPY --chmod=0755 presto-native-execution/etc ${PRESTISSIMO_HOME}/etc
-COPY --chmod=0775 presto-native-execution/entrypoint.sh ${PRESTISSIMO_HOME}/entrypoint.sh
-
-RUN sed -i 's/^node.environment=.*$/node.environment=test/' "$PRESTISSIMO_HOME/etc/node.properties" && \
-    sed -i 's|^discovery.uri=.*$|discovery.uri=http://127.0.0.1:8080|' "$PRESTISSIMO_HOME/etc/config.properties" && \
-    grep -q '^system-memory-gb=' "$PRESTISSIMO_HOME/etc/config.properties" || echo 'system-memory-gb=2' >> "$PRESTISSIMO_HOME/etc/config.properties" && \
-    sed -i "s|.* presto_server .*|GLOG_logtostderr=1 $PRESTISSIMO_HOME/bin/presto_server --etc-dir=$PRESTISSIMO_HOME/etc|" "$PRESTISSIMO_HOME/entrypoint.sh"
+COPY --chmod=0755 presto-dev/prestissimo/etc $PRESTISSIMO_HOME/etc
+COPY --chmod=0755 presto-dev/prestissimo/entrypoint.sh $PRESTISSIMO_HOME/

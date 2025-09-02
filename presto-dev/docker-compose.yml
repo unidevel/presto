@@ -34,11 +34,11 @@ services:
                             -DPRESTO_STATS_REPORTER_TYPE=PROMETHEUS
                             -DPRESTO_MEMORY_CHECKER_TYPE=LINUX_MEMORY_CHECKER
                             -DPRESTO_ENABLE_SPATIAL=ON
+                            -DVELOX_BUILD_TESTING=OFF
                             -DVELOX_ENABLE_SPARK=ON
-                            -DVELOX_BUILD_TESTING=ON
                             -DVELOX_ENABLE_SPARK_FUNCTIONS=ON
       context: ..
-      dockerfile: docker/Dockerfile-cpp-dev
+      dockerfile: presto-dev/Dockerfile-cpp-dev
     stdin_open: true
     tty: true
     volumes:
@@ -71,11 +71,11 @@ services:
                             -DPRESTO_STATS_REPORTER_TYPE=PROMETHEUS
                             -DPRESTO_MEMORY_CHECKER_TYPE=LINUX_MEMORY_CHECKER
                             -DPRESTO_ENABLE_SPATIAL=ON
+                            -DVELOX_BUILD_TESTING=OFF
                             -DVELOX_ENABLE_SPARK=ON
-                            -DVELOX_BUILD_TESTING=ON
                             -DVELOX_ENABLE_SPARK_FUNCTIONS=ON
       context: ..
-      dockerfile: docker/Dockerfile-cpp-dev
+      dockerfile: presto-dev/Dockerfile-cpp-dev
     stdin_open: true
     tty: true
     volumes:
@@ -97,7 +97,7 @@ services:
       context: ..
       args:
       - BASE_IMAGE=presto/presto-cpp-dev:ubuntu-22.04
-      dockerfile: docker/Dockerfile-dev
+      dockerfile: presto-dev/Dockerfile-dev
       target: ubuntu-dev
     stdin_open: true
     tty: true
@@ -120,7 +120,7 @@ services:
       args:
       - DEPENDENCY_IMAGE=quay.io/centos/centos:stream9
       context: ..
-      dockerfile: docker/Dockerfile-dev
+      dockerfile: presto-dev/Dockerfile-dev
       target: centos-dev
     stdin_open: true
     tty: true
@@ -142,7 +142,7 @@ services:
       args:
       - BASE_IMAGE=presto/presto-cpp-dev:centos9
       context: ..
-      dockerfile: docker/Dockerfile-dev
+      dockerfile: presto-dev/Dockerfile-dev
       target: centos-dev
     stdin_open: true
     tty: true

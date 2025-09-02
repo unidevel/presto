@@ -11,6 +11,8 @@
 # limitations under the License.
 
 ARG BASE_IMAGE=quay.io/centos/centos:stream9
+ARG CLEAN_CACHE
+
 FROM ${BASE_IMAGE} as centos-dev
 
 ENV PYTHON_VERSION=3.11.9 \
@@ -37,11 +39,22 @@ RUN --mount=type=cache,target=/var/cache/dnf,sharing=locked \
 RUN --mount=type=cache,target=/root/m2 \
     --mount=type=bind,source=..,target=${BUILD_ROOT},rw \
     cd /presto && \
-    MAVEN_USER_HOME=/root/m2 ./mvnw clean install -Dmaven.repo.local=/root/m2/repository -DskipTests && \
+    export MAVEN_USER_HOME=/root/m2 && \
+    if [ "${CLEAN_CACHE}" = "true" ]; then \
+      echo "Cleaning m2 folder: ${MAVEN_USER_HOME}" && \
+      rm -rf ${MAVEN_USER_HOME}/* ; \
+    fi && \
+    ./mvnw clean install -Dmaven.repo.local=${MAVEN_USER_HOME}/repository -DskipTests && \
     for dir in presto-*; do \
       rm -rf /root/m2/repository/com/facebook/presto/$dir; \
     done && \
-    cp -a /root/m2 /root/.m2 && \
+    rm -rf /var/cache/m2 /var/cache/pip /var/cache/uv /root/.m2 && \
+    cp -a ${MAVEN_USER_HOME} /var/cache/m2 && \
+    ln -sf /var/cache/m2 /root/.m2 && \
+    mv /root/.cache/uv /var/cache/uv && \
+    mv /root/.cache/pip /var/cache/pip && \
+    rm -rf /root/.cache/uv && ln -sf /var/cache/uv /root/.cache/uv && \
+    rm -rf /root/.cache/pip && ln -sf /var/cache/pip /root/.cache/pip && \
     mkdir -p $PRESTO_HOME && \
     tar --strip-components=1 -C "$PRESTO_HOME" -zxf /$BUILD_ROOT/presto-server/target/presto-server-*.tar.gz \
     && cp ${BUILD_ROOT}/presto-cli/target/presto-cli-*-executable.jar /opt/presto-cli \
@@ -54,16 +67,8 @@ RUN --mount=type=cache,target=/root/m2 \
         && curl -o /usr/lib/presto/utils/jmx_prometheus_javaagent-$JMX_PROMETHEUS_JAVAAGENT_VERSION.jar https://repo1.maven.org/maven2/io/prometheus/jmx/jmx_prometheus_javaagent/$JMX_PROMETHEUS_JAVAAGENT_VERSION/jmx_prometheus_javaagent-$JMX_PROMETHEUS_JAVAAGENT_VERSION.jar \
         && ln -sf /usr/lib/presto/utils/jmx_prometheus_javaagent-$JMX_PROMETHEUS_JAVAAGENT_VERSION.jar /usr/lib/presto/utils/jmx_prometheus_javaagent.jar
 
-COPY presto-dev/presto/etc $PRESTO_HOME/etc
-COPY presto-dev/presto/entrypoint.sh $PRESTO_HOME/
-RUN chmod +x $PRESTO_HOME/entrypoint.sh
-
-# Copy prestissimo config
-ENV PRESTISSIMO_HOME=/opt/prestissimo
-RUN mkdir -p $PRESTISSIMO_HOME
-COPY presto-dev/prestissimo/etc $PRESTISSIMO_HOME/etc
-COPY presto-dev/prestissimo/entrypoint.sh $PRESTISSIMO_HOME/
-RUN chmod +x $PRESTISSIMO_HOME/entrypoint.sh
+COPY --chmod=0755 presto-dev/presto/etc $PRESTO_HOME/etc
+COPY --chmod=0755 presto-dev/presto/entrypoint.sh $PRESTO_HOME/
 
 FROM ${BASE_IMAGE} as ubuntu-dev
 
@@ -83,11 +88,22 @@ RUN --mount=type=cache,target=/var/cache/apt,sharing=locked \
 RUN --mount=type=cache,target=/root/m2 \
     --mount=type=bind,source=..,target=${BUILD_ROOT},rw \
     cd ${BUILD_ROOT} && \
-    MAVEN_USER_HOME=/root/m2 ./mvnw clean install -Dmaven.repo.local=/root/m2/repository -DskipTests && \
+    export MAVEN_USER_HOME=/root/m2 && \
+    if [ "${CLEAN_CACHE}" = "true" ]; then \
+      echo "Cleaning m2 folder: ${MAVEN_USER_HOME}" && \
+      rm -rf ${MAVEN_USER_HOME}/* ; \
+    fi && \
+    ./mvnw clean install -Dmaven.repo.local=${MAVEN_USER_HOME}/repository -DskipTests && \
     for dir in presto-*; do \
       rm -rf /root/m2/repository/com/facebook/presto/$dir; \
     done && \
-    cp -a /root/m2 /root/.m2 && \
+    rm -rf /var/cache/m2 /root/.m2 && \
+    cp -a ${MAVEN_USER_HOME} /var/cache/m2 && \
+    ln -sf /var/cache/m2 /root/.m2 && \
+    mv /root/.cache/uv /var/cache/uv && \
+    mv /root/.cache/pip /var/cache/pip && \
+    rm -rf /root/.cache/uv && ln -sf /var/cache/uv /root/.cache/uv && \
+    rm -rf /root/.cache/pip && ln -sf /var/cache/pip /root/.cache/pip && \
     mkdir -p $PRESTO_HOME && \
     tar --strip-components=1 -C "$PRESTO_HOME" -zxf /$BUILD_ROOT/presto-server/target/presto-server-*.tar.gz \
     && cp ${BUILD_ROOT}/presto-cli/target/presto-cli-*-executable.jar /opt/presto-cli \
@@ -100,13 +116,6 @@ RUN --mount=type=cache,target=/root/m2 \
         && curl -o /usr/lib/presto/utils/jmx_prometheus_javaagent-$JMX_PROMETHEUS_JAVAAGENT_VERSION.jar https://repo1.maven.org/maven2/io/prometheus/jmx/jmx_prometheus_javaagent/$JMX_PROMETHEUS_JAVAAGENT_VERSION/jmx_prometheus_javaagent-$JMX_PROMETHEUS_JAVAAGENT_VERSION.jar \
         && ln -sf /usr/lib/presto/utils/jmx_prometheus_javaagent-$JMX_PROMETHEUS_JAVAAGENT_VERSION.jar /usr/lib/presto/utils/jmx_prometheus_javaagent.jar
 
-COPY presto-dev/presto/etc $PRESTO_HOME/etc
-COPY presto-dev/presto/entrypoint.sh $PRESTO_HOME/
-RUN chmod +x $PRESTO_HOME/entrypoint.sh
+COPY --chmod=0755 presto-dev/presto/etc $PRESTO_HOME/etc
+COPY --chmod=0755 presto-dev/presto/entrypoint.sh $PRESTO_HOME/
 
-# Copy prestissimo config
-ENV PRESTISSIMO_HOME=/opt/prestissimo
-RUN mkdir -p $PRESTISSIMO_HOME
-COPY presto-dev/prestissimo/etc $PRESTISSIMO_HOME/etc
-COPY presto-dev/prestissimo/entrypoint.sh $PRESTISSIMO_HOME/
-RUN chmod +x $PRESTISSIMO_HOME/entrypoint.sh
