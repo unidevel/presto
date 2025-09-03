@@ -1,1 +1,1 @@
-/var/cache/.m2
+/opt/cache/.m2
