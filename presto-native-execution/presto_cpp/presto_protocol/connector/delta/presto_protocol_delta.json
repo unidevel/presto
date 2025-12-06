@@ -1,0 +1,264 @@
+[
+  {
+    "comment": "// This file is generated DO NOT EDIT @generated"
+  },
+  {
+    "class_name": "DeltaColumn",
+    "struct": true,
+    "fields": [
+      {
+        "field_type": "String",
+        "field_name": "name",
+        "field_text": "String",
+        "_N": 1,
+        "field_local": true
+      },
+      {
+        "field_type": "TypeSignature",
+        "field_name": "type",
+        "field_text": "TypeSignature",
+        "_N": 2,
+        "field_local": true
+      },
+      {
+        "field_type": "boolean",
+        "field_name": "nullable",
+        "field_text": "bool",
+        "_N": 3,
+        "field_local": true
+      },
+      {
+        "field_type": "boolean",
+        "field_name": "partition",
+        "field_text": "bool",
+        "_N": 4,
+        "field_local": true
+      }
+    ]
+  },
+  {
+    "class_name": "ColumnType",
+    "enum": true,
+    "elements": [
+      {
+        "element": "REGULAR",
+        "_N": 1
+      },
+      {
+        "element": "PARTITION",
+        "_N": 2
+      },
+      {
+        "element": "SUBFIELD",
+        "_N": 3,
+        "_last": true
+      }
+    ]
+  },
+  {
+    "class_name": "DeltaColumnHandle",
+    "struct": true,
+    "fields": [
+      {
+        "field_type": "String",
+        "field_name": "name",
+        "field_text": "String",
+        "_N": 1,
+        "field_local": true
+      },
+      {
+        "field_type": "TypeSignature",
+        "field_name": "dataType",
+        "field_text": "TypeSignature",
+        "_N": 2,
+        "field_local": true
+      },
+      {
+        "field_type": "ColumnType",
+        "field_name": "columnType",
+        "field_text": "ColumnType",
+        "_N": 3,
+        "field_local": true
+      },
+      {
+        "field_type": "Optional<Subfield>",
+        "field_name": "subfield",
+        "field_text": "Subfield",
+        "optional": true,
+        "_N": 4,
+        "field_local": true
+      }
+    ],
+    "subclass": true,
+    "super_class": "ColumnHandle",
+    "json_key": "delta"
+  },
+  {
+    "class_name": "DeltaSplit",
+    "struct": true,
+    "fields": [
+      {
+        "field_type": "String",
+        "field_name": "connectorId",
+        "field_text": "String",
+        "_N": 1,
+        "field_local": true
+      },
+      {
+        "field_type": "String",
+        "field_name": "schemaName",
+        "field_text": "String",
+        "_N": 2,
+        "field_local": true
+      },
+      {
+        "field_type": "String",
+        "field_name": "tableName",
+        "field_text": "String",
+        "_N": 3,
+        "field_local": true
+      },
+      {
+        "field_type": "String",
+        "field_name": "filePath",
+        "field_text": "String",
+        "_N": 4,
+        "field_local": true
+      },
+      {
+        "field_type": "long",
+        "field_name": "start",
+        "field_text": "int64_t",
+        "_N": 5,
+        "field_local": true
+      },
+      {
+        "field_type": "long",
+        "field_name": "length",
+        "field_text": "int64_t",
+        "_N": 6,
+        "field_local": true
+      },
+      {
+        "field_type": "long",
+        "field_name": "fileSize",
+        "field_text": "int64_t",
+        "_N": 7,
+        "field_local": true
+      },
+      {
+        "field_type": "Map<String, String>",
+        "field_name": "partitionValues",
+        "field_text": "Map<String, String>",
+        "_N": 8,
+        "field_local": true
+      },
+      {
+        "field_type": "NodeSelectionStrategy",
+        "field_name": "nodeSelectionStrategy",
+        "field_text": "NodeSelectionStrategy",
+        "_N": 9,
+        "field_local": true
+      }
+    ],
+    "subclass": true,
+    "super_class": "ConnectorSplit",
+    "json_key": "delta"
+  },
+  {
+    "class_name": "DeltaTable",
+    "struct": true,
+    "fields": [
+      {
+        "field_type": "String",
+        "field_name": "schemaName",
+        "field_text": "String",
+        "_N": 1,
+        "field_local": true
+      },
+      {
+        "field_type": "String",
+        "field_name": "tableName",
+        "field_text": "String",
+        "_N": 2,
+        "field_local": true
+      },
+      {
+        "field_type": "String",
+        "field_name": "tableLocation",
+        "field_text": "String",
+        "_N": 3,
+        "field_local": true
+      },
+      {
+        "field_type": "Optional<Long>",
+        "field_name": "snapshotId",
+        "field_text": "Long",
+        "optional": true,
+        "_N": 4,
+        "field_local": true
+      },
+      {
+        "field_type": "List<DeltaColumn>",
+        "field_name": "columns",
+        "field_text": "List<DeltaColumn>",
+        "_N": 5,
+        "field_local": true
+      }
+    ]
+  },
+  {
+    "class_name": "DeltaTableHandle",
+    "struct": true,
+    "fields": [
+      {
+        "field_type": "String",
+        "field_name": "connectorId",
+        "field_text": "String",
+        "_N": 1,
+        "field_local": true
+      },
+      {
+        "field_type": "DeltaTable",
+        "field_name": "deltaTable",
+        "field_text": "DeltaTable",
+        "_N": 2,
+        "field_local": true
+      }
+    ],
+    "subclass": true,
+    "super_class": "ConnectorTableHandle",
+    "json_key": "delta"
+  },
+  {
+    "class_name": "DeltaTableLayoutHandle",
+    "struct": true,
+    "fields": [
+      {
+        "field_type": "DeltaTableHandle",
+        "field_name": "table",
+        "field_text": "DeltaTableHandle",
+        "_N": 1,
+        "field_local": true
+      },
+      {
+        "field_type": "TupleDomain<DeltaColumnHandle>",
+        "field_name": "predicate",
+        "field_text": "TupleDomain<DeltaColumnHandle>",
+        "_N": 2,
+        "field_local": true
+      },
+      {
+        "field_type": "Optional<String>",
+        "field_name": "predicateText",
+        "field_text": "String",
+        "optional": true,
+        "_N": 3,
+        "field_local": true
+      }
+    ],
+    "subclass": true,
+    "super_class": "ConnectorTableLayoutHandle",
+    "json_key": "delta"
+  }
+]

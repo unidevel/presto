@@ -51,6 +51,7 @@ AbstractClasses:
     subclasses:
       - { name: HiveColumnHandle,         key: hive }
       - { name: IcebergColumnHandle,      key: hive-iceberg }
+      - { name: DeltaColumnHandle,        key: delta }
       - { name: TpchColumnHandle,         key: tpch }
       - { name: SystemColumnHandle,       key: $system@system }
       - { name: ArrowColumnHandle,        key: arrow-flight }
@@ -67,6 +68,7 @@ AbstractClasses:
     subclasses:
       - { name: HiveTableHandle,          key: hive }
       - { name: IcebergTableHandle,       key: hive-iceberg }
+      - { name: DeltaTableHandle,         key: delta }
       - { name: TpchTableHandle,          key: tpch }
       - { name: SystemTableHandle,        key: $system@system }
       - { name: ArrowTableHandle,         key: arrow-flight }
@@ -103,6 +105,7 @@ AbstractClasses:
     subclasses:
       - { name: HiveTableLayoutHandle,    key: hive }
       - { name: IcebergTableLayoutHandle, key: hive-iceberg }
+      - { name: DeltaTableLayoutHandle,   key: delta }
       - { name: TpchTableLayoutHandle,    key: tpch }
       - { name: SystemTableLayoutHandle,  key: $system@system }
       - { name: ArrowTableLayoutHandle,   key: arrow-flight }
@@ -112,6 +115,7 @@ AbstractClasses:
     subclasses:
       - { name: HiveSplit,            key: hive }
       - { name: IcebergSplit,         key: hive-iceberg }
+      - { name: DeltaSplit,           key: delta }
       - { name: TpchSplit,            key: tpch }
       - { name: RemoteSplit,          key: $remote }
       - { name: EmptySplit,           key: $empty }
@@ -285,6 +289,12 @@ JavaClasses:
   - presto-iceberg/src/main/java/com/facebook/presto/iceberg/delete/DeleteFile.java
   - presto-iceberg/src/main/java/com/facebook/presto/iceberg/changelog/ChangelogOperation.java
   - presto-iceberg/src/main/java/com/facebook/presto/iceberg/changelog/ChangelogSplitInfo.java
+  - presto-delta/src/main/java/com/facebook/presto/delta/DeltaColumnHandle.java
+  - presto-delta/src/main/java/com/facebook/presto/delta/DeltaColumn.java
+  - presto-delta/src/main/java/com/facebook/presto/delta/DeltaTable.java
+  - presto-delta/src/main/java/com/facebook/presto/delta/DeltaTableHandle.java
+  - presto-delta/src/main/java/com/facebook/presto/delta/DeltaTableLayoutHandle.java
+  - presto-delta/src/main/java/com/facebook/presto/delta/DeltaSplit.java
   - presto-tpch/src/main/java/com/facebook/presto/tpch/TpchSplit.java
   - presto-tpch/src/main/java/com/facebook/presto/tpch/TpchTableHandle.java
   - presto-tpch/src/main/java/com/facebook/presto/tpch/TpchTableLayoutHandle.java
