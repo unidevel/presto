@@ -30,7 +30,6 @@ import jakarta.inject.Inject;
 
 import java.io.IOException;
 import java.io.UncheckedIOException;
-import java.net.URI;
 import java.util.Map;
 import java.util.Map.Entry;
 import java.util.concurrent.CompletableFuture;
@@ -94,11 +93,14 @@ public class DeltaSplitManager
             while (rowIterator.hasNext() && currentSplitCount < maxSize && currentSplitCount < maxBatchSize) {
                 Row row = rowIterator.next();
                 FileStatus addFileStatus = InternalScanFileUtils.getAddFileStatus(row);
+                String filePath = addFileStatus.getPath();
+
                 splitBuilder.add(new DeltaSplit(
                         connectorId,
                         deltaTable.getSchemaName(),
                         deltaTable.getTableName(),
-                        URI.create(addFileStatus.getPath()).getPath(),
+                        deltaTable.getTableLocation(),
+                        filePath,
                         0, /* start */
                         addFileStatus.getSize() /* split length - default is read the entire file in one split */,
                         addFileStatus.getSize(),
