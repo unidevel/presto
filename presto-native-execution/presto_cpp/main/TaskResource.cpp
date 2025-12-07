@@ -376,6 +376,8 @@ proxygen::RequestHandler* TaskResource::createOrUpdateTask(
           thriftRead(requestBody, thriftTaskUpdateRequest);
           fromThrift(*thriftTaskUpdateRequest, updateRequest);
         } else {
+          LOG(INFO) << "Parsing JSON request body for task " << taskId
+                    << ": \n" << requestBody;
           updateRequest = json::parse(requestBody);
         }
         velox::core::PlanFragment planFragment;
