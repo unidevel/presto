@@ -67,6 +67,7 @@ import org.apache.parquet.schema.MessageType;
 
 import java.io.FileNotFoundException;
 import java.io.IOException;
+import java.net.URI;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
@@ -151,7 +152,7 @@ public class DeltaPageSourceProvider
                 deltaSplit.getTable(),
                 deltaSplit.getFilePath(),
                 false);
-        Path filePath = new Path(deltaSplit.getFilePath());
+        Path filePath = new Path(URI.create(deltaSplit.getFilePath()));
         List<DeltaColumnHandle> deltaColumnHandles = columns.stream()
                 .map(DeltaColumnHandle.class::cast)
                 .collect(Collectors.toList());

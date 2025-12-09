@@ -18,8 +18,10 @@
 #include "presto_cpp/presto_protocol/connector/delta/DeltaConnectorProtocol.h"
 #include "velox/connectors/hive/delta/HiveDeltaSplit.h"
 #include "velox/type/fbhive/HiveTypeParser.h"
+#include <folly/String.h>
 
 namespace facebook::presto {
+
 
 std::unique_ptr<velox::connector::ConnectorSplit>
 DeltaPrestoToVeloxConnector::toVeloxSplit(
@@ -50,10 +52,11 @@ DeltaPrestoToVeloxConnector::toVeloxSplit(
   // If the file path is already absolute (contains scheme), use it as is
   // Otherwise, combine table location with the relative file path
   std::string fullFilePath;
-    const std::string& path = deltaSplit->filePath;
-    if (path.find("://") != std::string::npos || path.starts_with("file:/")) {
-        fullFilePath = path;
-    } else {
+  const std::string& path = deltaSplit->filePath;
+  if (path.find("://") != std::string::npos || path.starts_with("file:/")) {
+    // Decode URL-encoded path (e.g., %20 -> space, %3A -> colon)
+    fullFilePath = folly::uriUnescape<std::string>(path);
+  } else {
     // Remove trailing slash from table location if present
     std::string tableLocation = deltaSplit->tableLocation;
     if (!tableLocation.empty() && tableLocation.back() == '/') {
@@ -64,7 +67,8 @@ DeltaPrestoToVeloxConnector::toVeloxSplit(
     if (!filePath.empty() && filePath.front() != '/') {
       filePath = "/" + filePath;
     }
-    fullFilePath = tableLocation + filePath;
+    // Decode URL-encoded path components
+    fullFilePath = folly::uriUnescape<std::string>(tableLocation + filePath);
   }
 
   // Add info columns for Delta Lake metadata

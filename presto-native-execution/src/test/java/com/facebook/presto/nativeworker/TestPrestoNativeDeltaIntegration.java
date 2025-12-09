@@ -25,7 +25,8 @@ public class TestPrestoNativeDeltaIntegration
         extends TestDeltaIntegration
 {
     @BeforeClass
-    public static void silenceDeltaLogging() {
+    public static void silenceDeltaLogging()
+    {
         // Hide huge warning logs caused by not having checkpoints.
         Logging logging = Logging.initialize();
         logging.setLevel("io.delta.kernel", Level.ERROR);
@@ -36,9 +37,9 @@ public class TestPrestoNativeDeltaIntegration
             throws Exception
     {
         QueryRunner queryRunner = PrestoNativeQueryRunnerUtils.nativeDeltaQueryRunnerBuilder()
-            .setStorageFormat(DELTA_DEFAULT_STORAGE_FORMAT)
-            .setAddStorageFormatToPath(true)
-            .build();
+                .setStorageFormat(DELTA_DEFAULT_STORAGE_FORMAT)
+                .setAddStorageFormatToPath(true)
+                .build();
 
         // Create the test Delta tables in HMS
         for (String deltaTestTable : DELTA_TEST_TABLE_LIST) {
