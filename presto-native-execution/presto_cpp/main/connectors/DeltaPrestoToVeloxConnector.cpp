@@ -50,9 +50,10 @@ DeltaPrestoToVeloxConnector::toVeloxSplit(
   // If the file path is already absolute (contains scheme), use it as is
   // Otherwise, combine table location with the relative file path
   std::string fullFilePath;
-  if (deltaSplit->filePath.find("://") != std::string::npos) {
-    fullFilePath = deltaSplit->filePath;
-  } else {
+    const std::string& path = deltaSplit->filePath;
+    if (path.find("://") != std::string::npos || path.starts_with("file:/")) {
+        fullFilePath = path;
+    } else {
     // Remove trailing slash from table location if present
     std::string tableLocation = deltaSplit->tableLocation;
     if (!tableLocation.empty() && tableLocation.back() == '/') {
