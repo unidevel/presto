@@ -186,6 +186,30 @@ DeltaPrestoToVeloxConnector::toVeloxTableHandle(
             columnParseParameters));
   }
 
+  // Build dataColumns from columnHandles, excluding partition keys
+  velox::RowTypePtr dataColumns;
+  if (!columnHandles.empty()) {
+    std::vector<std::string> names;
+    std::vector<velox::TypePtr> types;
+    names.reserve(columnHandles.size());
+    types.reserve(columnHandles.size());
+    for (const auto& columnHandle : columnHandles) {
+      // Skip partition key columns as they're not in the data files
+      if (columnHandle->columnType() ==
+          velox::connector::hive::HiveColumnHandle::ColumnType::kPartitionKey) {
+        continue;
+      }
+      names.emplace_back(columnHandle->name());
+      // Use hiveType if available, otherwise use dataType
+      types.push_back(columnHandle->hiveType()
+          ? columnHandle->hiveType()
+          : columnHandle->dataType());
+    }
+    if (!names.empty()) {
+      dataColumns = ROW(std::move(names), std::move(types));
+    }
+  }
+
   // Create basic table handle without predicates for now
   // TODO: After protocol generation, extract predicates from DeltaTableLayoutHandle
   return std::make_unique<velox::connector::hive::HiveTableHandle>(
@@ -194,7 +218,7 @@ DeltaPrestoToVeloxConnector::toVeloxTableHandle(
       false, // isPushdownFilterEnabled
       velox::common::SubfieldFilters{}, // subfieldFilters
       nullptr, // remainingFilter
-      nullptr, // dataColumns
+      dataColumns, // dataColumns
       std::unordered_map<std::string, std::string>{},
       columnHandles);
 }
