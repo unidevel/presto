@@ -19,8 +19,6 @@ import com.facebook.presto.delta.TestDeltaIntegration;
 import com.facebook.presto.testing.QueryRunner;
 import org.testng.annotations.BeforeClass;
 
-import static com.facebook.presto.nativeworker.PrestoNativeQueryRunnerUtils.DELTA_DEFAULT_STORAGE_FORMAT;
-
 public class TestPrestoNativeDeltaIntegration
         extends TestDeltaIntegration
 {
@@ -37,8 +35,6 @@ public class TestPrestoNativeDeltaIntegration
             throws Exception
     {
         QueryRunner queryRunner = PrestoNativeQueryRunnerUtils.nativeDeltaQueryRunnerBuilder()
-                .setStorageFormat(DELTA_DEFAULT_STORAGE_FORMAT)
-                .setAddStorageFormatToPath(true)
                 .build();
 
         // Create the test Delta tables in HMS
