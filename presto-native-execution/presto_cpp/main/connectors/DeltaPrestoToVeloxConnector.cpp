@@ -187,6 +187,25 @@ DeltaPrestoToVeloxConnector::toVeloxTableHandle(
             columnParseParameters));
   }
 
+  // Validate that partition columns are at the end of the schema
+  // Native execution requires this ordering for correct data reading
+  bool foundPartition = false;
+  for (size_t i = 0; i < deltaTableHandle->deltaTable.columns.size(); ++i) {
+    const auto& deltaColumn = deltaTableHandle->deltaTable.columns[i];
+    if (deltaColumn.partition) {
+      foundPartition = true;
+    } else if (foundPartition) {
+      // Found a non-partition column after a partition column
+      VELOX_USER_FAIL(
+          "Delta table '{}' has partition columns that are not at the end of the schema. "
+          "Native execution (Prestissimo) requires all partition columns to be at the end of the column list. "
+          "Please reorder the columns in your Delta table schema so that all partition columns appear after regular columns.",
+          fmt::format("{}.{}",
+              deltaTableHandle->deltaTable.schemaName,
+              deltaTableHandle->deltaTable.tableName));
+    }
+  }
+
   // Build dataColumns from columnHandles with partition columns at the end
   velox::RowTypePtr dataColumns;
   if (!columnHandles.empty()) {

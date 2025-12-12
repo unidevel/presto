@@ -18,6 +18,7 @@ import com.facebook.airlift.log.Logging;
 import com.facebook.presto.delta.TestDeltaIntegration;
 import com.facebook.presto.testing.QueryRunner;
 import org.testng.annotations.BeforeClass;
+import org.testng.annotations.Test;
 
 public class TestPrestoNativeDeltaIntegration
         extends TestDeltaIntegration
@@ -43,5 +44,24 @@ public class TestPrestoNativeDeltaIntegration
         }
 
         return queryRunner;
+    }
+
+    // Presto delta supports partition keys being anywhere in the column list,
+    // but native execution requires all partition columns to be at the end of the column list.
+    // This is because velox split reader verifies the positioning of the partition columns.
+    // Java reader does not verify this and reads parquet files appending in the partition columns.
+    // See DeltaPageSource.getNextPage().
+    // We attempted a fix that kind of worked, which was to set isRoot to true, but it did not seem
+    // like a valid fix.
+    @Test(dataProvider = "deltaReaderVersions")
+    @Override
+    public void readSimplePartitionedTableBeginningKeys(String version)
+    {
+        String testQuery = "SELECT * FROM \"" + getVersionPrefix(version) +
+                "simple-partitioned-table\"";
+        assertQueryFails(testQuery, " Delta table 'deltatables." + getVersionPrefix(version) +
+                "simple-partitioned-table' has partition columns that are not at the end of the schema. " +
+                "Native execution \\(Prestissimo\\) requires all partition columns to be at the end of the column list. " +
+                "Please reorder the columns in your Delta table schema so that all partition columns appear after regular columns.");
     }
 }

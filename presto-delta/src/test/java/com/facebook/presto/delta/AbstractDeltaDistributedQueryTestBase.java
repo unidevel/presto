@@ -54,7 +54,8 @@ public abstract class AbstractDeltaDistributedQueryTestBase
             "test-uppercase",
             "test-partitions-uppercase",
             "test-typing",
-            "simple-partitioned-table"
+            "simple-partitioned-table",
+            "simple-partitioned-table-end-keys"
     };
 
     /**

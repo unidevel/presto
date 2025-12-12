@@ -203,10 +203,19 @@ public class TestDeltaIntegration
         assertQuery(testQuery2, expResultsQuery2);
     }
 
-    @Test
-    public void readSimplePartitionedTable()
+    @Test(dataProvider = "deltaReaderVersions")
+    public void readSimplePartitionedTable(String version)
     {
-        String testQuery = "SELECT * FROM \"" + getVersionPrefix("delta_v1") +
+        String testQuery = "SELECT * FROM \"" + getVersionPrefix(version) +
+                "simple-partitioned-table-end-keys\"";
+        String expResultsQuery = "SELECT * FROM VALUES('test_value', 1)";
+        assertQuery(testQuery, expResultsQuery);
+    }
+
+    @Test(dataProvider = "deltaReaderVersions")
+    public void readSimplePartitionedTableBeginningKeys(String version)
+    {
+        String testQuery = "SELECT * FROM \"" + getVersionPrefix(version) +
                 "simple-partitioned-table\"";
         String expResultsQuery = "SELECT * FROM VALUES(1, 'test_value')";
         assertQuery(testQuery, expResultsQuery);
