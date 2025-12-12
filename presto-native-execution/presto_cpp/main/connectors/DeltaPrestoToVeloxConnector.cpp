@@ -17,7 +17,6 @@
 
 #include "presto_cpp/presto_protocol/connector/delta/DeltaConnectorProtocol.h"
 #include "velox/connectors/hive/delta/HiveDeltaSplit.h"
-#include "velox/type/fbhive/HiveTypeParser.h"
 #include <folly/String.h>
 
 namespace facebook::presto {
@@ -34,6 +33,7 @@ DeltaPrestoToVeloxConnector::toVeloxSplit(
       deltaSplit, "Unexpected split type {}", connectorSplit->_type);
 
   // Convert partition values to the format expected by Velox
+  // For Delta Lake, partition values should be in ISO8601 format for dates
   std::unordered_map<std::string, std::optional<std::string>> partitionKeys;
   for (const auto& entry : deltaSplit->partitionValues) {
     partitionKeys.emplace(
@@ -107,8 +107,9 @@ DeltaPrestoToVeloxConnector::toVeloxColumnHandle(
   velox::connector::hive::HiveColumnHandle::ColumnParseParameters
       columnParseParameters;
   if (type->isDate()) {
+    // Delta Lake stores date partition values in ISO8601 format (YYYY-MM-DD)
     columnParseParameters.partitionDateValueFormat = velox::connector::hive::
-        HiveColumnHandle::ColumnParseParameters::kDaysSinceEpoch;
+        HiveColumnHandle::ColumnParseParameters::kISO8601;
   }
 
   // Convert Delta column type to Hive column type
@@ -144,7 +145,7 @@ DeltaPrestoToVeloxConnector::toVeloxTableHandle(
     const TypeParser& typeParser) const {
   // Note: After protocol generation, cast to DeltaTableLayoutHandle
   // For now, we'll work with the basic table handle structure
-  
+
   auto deltaTableHandle =
       std::dynamic_pointer_cast<const protocol::delta::DeltaTableHandle>(
           tableHandle.connectorHandle);
@@ -163,12 +164,12 @@ DeltaPrestoToVeloxConnector::toVeloxTableHandle(
   std::vector<velox::connector::hive::HiveColumnHandlePtr> columnHandles;
   for (const auto& deltaColumn : deltaTableHandle->deltaTable.columns) {
     auto type = stringToType(deltaColumn.type, typeParser);
-    
+
     velox::connector::hive::HiveColumnHandle::ColumnParseParameters
         columnParseParameters;
     if (type->isDate()) {
       columnParseParameters.partitionDateValueFormat = velox::connector::hive::
-          HiveColumnHandle::ColumnParseParameters::kDaysSinceEpoch;
+          HiveColumnHandle::ColumnParseParameters::kISO8601;
     }
 
     velox::connector::hive::HiveColumnHandle::ColumnType hiveColumnType =
@@ -186,25 +187,47 @@ DeltaPrestoToVeloxConnector::toVeloxTableHandle(
             columnParseParameters));
   }
 
-  // Build dataColumns from columnHandles, excluding partition keys
+  // Build dataColumns from columnHandles with partition columns at the end
   velox::RowTypePtr dataColumns;
   if (!columnHandles.empty()) {
     std::vector<std::string> names;
     std::vector<velox::TypePtr> types;
     names.reserve(columnHandles.size());
     types.reserve(columnHandles.size());
+
+    // First, add regular columns
     for (const auto& columnHandle : columnHandles) {
-      // Skip partition key columns as they're not in the data files
+      if (columnHandle->columnType() ==
+          velox::connector::hive::HiveColumnHandle::ColumnType::kRegular) {
+        // For Delta, the column name should be consistent with
+        // names in Delta manifest file. The names in Delta
+        // manifest file are consistent with the field names in
+        // parquet data file.
+        names.emplace_back(columnHandle->name());
+        auto type = columnHandle->hiveType()
+            ? columnHandle->hiveType()
+            : columnHandle->dataType();
+        // The type from the metastore may have upper case letters
+        // in field names, convert them all to lower case to be
+        // compatible with Presto.
+        types.push_back(VELOX_DYNAMIC_TYPE_DISPATCH(
+            fieldNamesToLowerCase, type->kind(), type));
+      }
+    }
+
+    // Then, add partition columns at the end
+    for (const auto& columnHandle : columnHandles) {
       if (columnHandle->columnType() ==
           velox::connector::hive::HiveColumnHandle::ColumnType::kPartitionKey) {
-        continue;
+        names.emplace_back(columnHandle->name());
+        auto type = columnHandle->hiveType()
+            ? columnHandle->hiveType()
+            : columnHandle->dataType();
+        types.push_back(VELOX_DYNAMIC_TYPE_DISPATCH(
+            fieldNamesToLowerCase, type->kind(), type));
       }
-      names.emplace_back(columnHandle->name());
-      // Use hiveType if available, otherwise use dataType
-      types.push_back(columnHandle->hiveType()
-          ? columnHandle->hiveType()
-          : columnHandle->dataType());
     }
+
     if (!names.empty()) {
       dataColumns = ROW(std::move(names), std::move(types));
     }
