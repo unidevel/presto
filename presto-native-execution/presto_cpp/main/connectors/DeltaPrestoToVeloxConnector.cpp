@@ -103,7 +103,7 @@ DeltaPrestoToVeloxConnector::toVeloxColumnHandle(
       deltaColumn, "Unexpected column handle type {}", column->_type);
 
   auto type = stringToType(deltaColumn->dataType, typeParser);
-  
+
   velox::connector::hive::HiveColumnHandle::ColumnParseParameters
       columnParseParameters;
   if (type->isDate()) {
@@ -187,25 +187,6 @@ DeltaPrestoToVeloxConnector::toVeloxTableHandle(
             columnParseParameters));
   }
 
-  // Validate that partition columns are at the end of the schema
-  // Native execution requires this ordering for correct data reading
-  bool foundPartition = false;
-  for (size_t i = 0; i < deltaTableHandle->deltaTable.columns.size(); ++i) {
-    const auto& deltaColumn = deltaTableHandle->deltaTable.columns[i];
-    if (deltaColumn.partition) {
-      foundPartition = true;
-    } else if (foundPartition) {
-      // Found a non-partition column after a partition column
-      VELOX_USER_FAIL(
-          "Delta table '{}' has partition columns that are not at the end of the schema. "
-          "Native execution (Prestissimo) requires all partition columns to be at the end of the column list. "
-          "Please reorder the columns in your Delta table schema so that all partition columns appear after regular columns.",
-          fmt::format("{}.{}",
-              deltaTableHandle->deltaTable.schemaName,
-              deltaTableHandle->deltaTable.tableName));
-    }
-  }
-
   // Build dataColumns from columnHandles with partition columns at the end
   velox::RowTypePtr dataColumns;
   if (!columnHandles.empty()) {
@@ -236,8 +217,8 @@ DeltaPrestoToVeloxConnector::toVeloxTableHandle(
 
     // Then, add partition columns at the end
     for (const auto& columnHandle : columnHandles) {
-      if (columnHandle->columnType() ==
-          velox::connector::hive::HiveColumnHandle::ColumnType::kPartitionKey) {
+      if (columnHandle->columnType() !=
+          velox::connector::hive::HiveColumnHandle::ColumnType::kRegular) {
         names.emplace_back(columnHandle->name());
         auto type = columnHandle->hiveType()
             ? columnHandle->hiveType()

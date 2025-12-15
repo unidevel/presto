@@ -53,6 +53,7 @@ import java.util.List;
 import java.util.Map;
 import java.util.Optional;
 import java.util.OptionalInt;
+import java.util.TimeZone;
 import java.util.UUID;
 import java.util.function.BiFunction;
 
@@ -429,7 +430,7 @@ public class PrestoNativeQueryRunnerUtils
         private Map<String, String> extraProperties = new HashMap<>();
         private Map<String, String> extraConnectorProperties = new HashMap<>();
         private Optional<String> remoteFunctionServerUds = Optional.empty();
-        private TimeZoneKey timeZoneKey = UTC_KEY;
+        private TimeZoneKey timeZoneKey = TimeZoneKey.getTimeZoneKey(TimeZone.getDefault().getID());
         private boolean caseSensitiveParitions;
         // External worker launcher is applicable only for the native iceberg query runner, since it depends on other
         // properties it should be created once all the other query runner configs are set. This variable indicates
