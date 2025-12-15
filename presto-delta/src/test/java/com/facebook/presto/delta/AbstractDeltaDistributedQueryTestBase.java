@@ -48,6 +48,7 @@ public abstract class AbstractDeltaDistributedQueryTestBase
             "time-travel-partition-changes-b",
             "deltatbl-partition-prune",
             "data-reader-partition-values",
+            "data-reader-partition-values-end-keys",
             "data-reader-nested-struct",
             "test-lowercase",
             "test-partitions-lowercase",

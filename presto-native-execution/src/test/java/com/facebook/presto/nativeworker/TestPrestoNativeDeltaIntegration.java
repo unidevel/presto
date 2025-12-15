@@ -55,12 +55,24 @@ public class TestPrestoNativeDeltaIntegration
     // like a valid fix.
     @Test(dataProvider = "deltaReaderVersions")
     @Override
-    public void readSimplePartitionedTableBeginningKeys(String version)
+    public void readSimplePartitionedTable(String version)
     {
         String testQuery = "SELECT * FROM \"" + getVersionPrefix(version) +
                 "simple-partitioned-table\"";
         assertQueryFails(testQuery, " Delta table 'deltatables." + getVersionPrefix(version) +
                 "simple-partitioned-table' has partition columns that are not at the end of the schema. " +
+                "Native execution \\(Prestissimo\\) requires all partition columns to be at the end of the column list. " +
+                "Please reorder the columns in your Delta table schema so that all partition columns appear after regular columns.");
+    }
+
+    @Test(dataProvider = "deltaReaderVersions")
+    @Override
+    public void readPartitionedTableAllDataTypes(String version)
+    {
+        String testQuery = "SELECT * FROM \"" + getVersionPrefix(version) +
+                "data-reader-partition-values\"";
+        assertQueryFails(testQuery, " Delta table 'deltatables." + getVersionPrefix(version) +
+                "data-reader-partition-values' has partition columns that are not at the end of the schema. " +
                 "Native execution \\(Prestissimo\\) requires all partition columns to be at the end of the column list. " +
                 "Please reorder the columns in your Delta table schema so that all partition columns appear after regular columns.");
     }
