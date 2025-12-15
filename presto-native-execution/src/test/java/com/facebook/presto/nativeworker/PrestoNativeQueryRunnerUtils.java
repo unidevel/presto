@@ -58,7 +58,6 @@ import java.util.UUID;
 import java.util.function.BiFunction;
 
 import static com.facebook.presto.common.ErrorType.INTERNAL_ERROR;
-import static com.facebook.presto.common.type.TimeZoneKey.UTC_KEY;
 import static com.facebook.presto.hive.HiveQueryRunner.METASTORE_CONTEXT;
 import static com.facebook.presto.hive.HiveQueryRunner.createDatabaseMetastoreObject;
 import static com.facebook.presto.hive.HiveQueryRunner.getFileHiveMetastore;

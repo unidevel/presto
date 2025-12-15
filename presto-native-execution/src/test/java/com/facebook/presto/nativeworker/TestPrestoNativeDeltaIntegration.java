@@ -15,15 +15,9 @@ package com.facebook.presto.nativeworker;
 
 import com.facebook.airlift.log.Level;
 import com.facebook.airlift.log.Logging;
-import com.facebook.presto.Session;
 import com.facebook.presto.delta.TestDeltaIntegration;
-import com.facebook.presto.spi.session.PropertyMetadata;
 import com.facebook.presto.testing.QueryRunner;
-
-import java.util.TimeZone;
-
 import org.testng.annotations.BeforeClass;
-import org.testng.annotations.Test;
 
 public class TestPrestoNativeDeltaIntegration
         extends TestDeltaIntegration
@@ -42,14 +36,10 @@ public class TestPrestoNativeDeltaIntegration
     {
         QueryRunner queryRunner = PrestoNativeQueryRunnerUtils.nativeDeltaQueryRunnerBuilder()
                 .build();
-        queryRunner.getMetadata().getSessionPropertyManager().addSystemSessionProperty(PropertyMetadata.stringProperty("session_timezone", "session timezone", "UTC", false));
-        queryRunner.getMetadata().getSessionPropertyManager().addSystemSessionProperty(PropertyMetadata.booleanProperty("adjust_timestamp_to_session_timezone", "adjust timestamp to session timezone", true, false));
-
         // Create the test Delta tables in HMS
         for (String deltaTestTable : DELTA_TEST_TABLE_LIST) {
             registerDeltaTableInHMS(queryRunner, deltaTestTable, deltaTestTable);
         }
-
         return queryRunner;
     }
 }
