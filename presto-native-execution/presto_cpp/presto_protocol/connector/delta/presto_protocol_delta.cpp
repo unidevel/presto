@@ -87,7 +87,11 @@ void from_json(const json& j, ColumnType& e) {
           ->first;
 }
 } // namespace facebook::presto::protocol::delta
+// DeltaColumnHandle is special since it needs to use "columnName" as the JSON
+// key instead of "name" to match the Java @JsonProperty annotation.
+
 namespace facebook::presto::protocol::delta {
+
 DeltaColumnHandle::DeltaColumnHandle() noexcept {
   _type = "hive-delta";
 }
@@ -134,6 +138,7 @@ void from_json(const json& j, DeltaColumnHandle& p) {
   from_json_key(
       j, "subfield", p.subfield, "DeltaColumnHandle", "Subfield", "subfield");
 }
+
 } // namespace facebook::presto::protocol::delta
 namespace facebook::presto::protocol::delta {
 DeltaSplit::DeltaSplit() noexcept {

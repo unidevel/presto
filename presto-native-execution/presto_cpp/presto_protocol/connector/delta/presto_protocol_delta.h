@@ -46,7 +46,11 @@ enum class ColumnType { REGULAR, PARTITION, SUBFIELD };
 extern void to_json(json& j, const ColumnType& e);
 extern void from_json(const json& j, ColumnType& e);
 } // namespace facebook::presto::protocol::delta
+// DeltaColumnHandle is special since it needs an implementation of
+// operator<().
+
 namespace facebook::presto::protocol::delta {
+
 struct DeltaColumnHandle : public ColumnHandle {
   String name = {};
   TypeSignature dataType = {};
@@ -54,9 +58,15 @@ struct DeltaColumnHandle : public ColumnHandle {
   std::shared_ptr<Subfield> subfield = {};
 
   DeltaColumnHandle() noexcept;
+
+  bool operator<(const ColumnHandle& o) const override {
+    return name < dynamic_cast<const DeltaColumnHandle&>(o).name;
+  }
 };
+
 void to_json(json& j, const DeltaColumnHandle& p);
 void from_json(const json& j, DeltaColumnHandle& p);
+
 } // namespace facebook::presto::protocol::delta
 namespace facebook::presto::protocol::delta {
 struct DeltaSplit : public ConnectorSplit {
