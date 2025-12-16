@@ -187,7 +187,10 @@ DeltaPrestoToVeloxConnector::toVeloxTableHandle(
             columnParseParameters));
   }
 
-  // Build dataColumns from columnHandles with partition columns at the end
+  // Build dataColumns from columnHandles, excluding partition columns.
+  // This matches Hive's behavior where dataColumns only contains non-partition columns
+  // that are actually stored in the data files. Partition columns are handled separately
+  // as constants during reading.
   velox::RowTypePtr dataColumns;
   if (!columnHandles.empty()) {
     std::vector<std::string> names;
@@ -195,37 +198,26 @@ DeltaPrestoToVeloxConnector::toVeloxTableHandle(
     names.reserve(columnHandles.size());
     types.reserve(columnHandles.size());
 
-    // First, add regular columns
+    // Add only non-partition columns (regular columns that exist in data files)
     for (const auto& columnHandle : columnHandles) {
-      if (columnHandle->columnType() ==
-          velox::connector::hive::HiveColumnHandle::ColumnType::kRegular) {
-        // For Delta, the column name should be consistent with
-        // names in Delta manifest file. The names in Delta
-        // manifest file are consistent with the field names in
-        // parquet data file.
-        names.emplace_back(columnHandle->name());
-        auto type = columnHandle->hiveType()
-            ? columnHandle->hiveType()
-            : columnHandle->dataType();
-        // The type from the metastore may have upper case letters
-        // in field names, convert them all to lower case to be
-        // compatible with Presto.
-        types.push_back(VELOX_DYNAMIC_TYPE_DISPATCH(
-            fieldNamesToLowerCase, type->kind(), type));
+      // Skip partition columns - they're not in the data files
+      if (columnHandle->columnType() == velox::connector::hive::HiveColumnHandle::ColumnType::kPartitionKey) {
+        continue;
       }
-    }
-
-    // Then, add partition columns at the end
-    for (const auto& columnHandle : columnHandles) {
-      if (columnHandle->columnType() !=
-          velox::connector::hive::HiveColumnHandle::ColumnType::kRegular) {
-        names.emplace_back(columnHandle->name());
-        auto type = columnHandle->hiveType()
-            ? columnHandle->hiveType()
-            : columnHandle->dataType();
-        types.push_back(VELOX_DYNAMIC_TYPE_DISPATCH(
-            fieldNamesToLowerCase, type->kind(), type));
-      }
+      
+      // For Delta, the column name should be consistent with
+      // names in Delta manifest file. The names in Delta
+      // manifest file are consistent with the field names in
+      // parquet data file.
+      names.emplace_back(columnHandle->name());
+      auto type = columnHandle->hiveType()
+          ? columnHandle->hiveType()
+          : columnHandle->dataType();
+      // The type from the metastore may have upper case letters
+      // in field names, convert them all to lower case to be
+      // compatible with Presto.
+      types.push_back(VELOX_DYNAMIC_TYPE_DISPATCH(
+          fieldNamesToLowerCase, type->kind(), type));
     }
 
     if (!names.empty()) {
