@@ -15,12 +15,11 @@
 #include "presto_cpp/main/connectors/DeltaPrestoToVeloxConnector.h"
 #include "presto_cpp/main/connectors/PrestoToVeloxConnectorUtils.h"
 
+#include <folly/String.h>
 #include "presto_cpp/presto_protocol/connector/delta/DeltaConnectorProtocol.h"
 #include "velox/connectors/hive/delta/HiveDeltaSplit.h"
-#include <folly/String.h>
 
 namespace facebook::presto {
-
 
 std::unique_ptr<velox::connector::ConnectorSplit>
 DeltaPrestoToVeloxConnector::toVeloxSplit(
@@ -116,13 +115,15 @@ DeltaPrestoToVeloxConnector::toVeloxColumnHandle(
       velox::connector::hive::HiveColumnHandle::ColumnType::kRegular;
 
   if (deltaColumn->columnType == protocol::delta::ColumnType::PARTITION) {
-    hiveColumnType = velox::connector::hive::HiveColumnHandle::ColumnType::kPartitionKey;
+    hiveColumnType =
+        velox::connector::hive::HiveColumnHandle::ColumnType::kPartitionKey;
   }
 
   // Convert subfield if present
   std::vector<velox::common::Subfield> requiredSubfields;
   if (deltaColumn->subfield) {
-    requiredSubfields.push_back(velox::common::Subfield(*deltaColumn->subfield));
+    requiredSubfields.push_back(
+        velox::common::Subfield(*deltaColumn->subfield));
   }
 
   return std::unique_ptr<velox::connector::ColumnHandle>(
@@ -186,9 +187,9 @@ DeltaPrestoToVeloxConnector::toVeloxTableHandle(
   }
 
   // Build dataColumns from columnHandles, excluding partition columns.
-  // This matches Hive's behavior where dataColumns only contains non-partition columns
-  // that are actually stored in the data files. Partition columns are handled separately
-  // as constants during reading.
+  // This matches Hive's behavior where dataColumns only contains non-partition
+  // columns that are actually stored in the data files. Partition columns are
+  // handled separately as constants during reading.
   velox::RowTypePtr dataColumns;
   if (!columnHandles.empty()) {
     std::vector<std::string> names;
@@ -199,18 +200,18 @@ DeltaPrestoToVeloxConnector::toVeloxTableHandle(
     // Add only non-partition columns (regular columns that exist in data files)
     for (const auto& columnHandle : columnHandles) {
       // Skip partition columns - they're not in the data files
-      if (columnHandle->columnType() == velox::connector::hive::HiveColumnHandle::ColumnType::kPartitionKey) {
+      if (columnHandle->columnType() ==
+          velox::connector::hive::HiveColumnHandle::ColumnType::kPartitionKey) {
         continue;
       }
-      
+
       // For Delta, the column name should be consistent with
       // names in Delta manifest file. The names in Delta
       // manifest file are consistent with the field names in
       // parquet data file.
       names.emplace_back(columnHandle->name());
-      auto type = columnHandle->hiveType()
-          ? columnHandle->hiveType()
-          : columnHandle->dataType();
+      auto type = columnHandle->hiveType() ? columnHandle->hiveType()
+                                           : columnHandle->dataType();
       // The type from the metastore may have upper case letters
       // in field names, convert them all to lower case to be
       // compatible with Presto.
@@ -224,7 +225,8 @@ DeltaPrestoToVeloxConnector::toVeloxTableHandle(
   }
 
   // Create basic table handle without predicates for now
-  // TODO: After protocol generation, extract predicates from DeltaTableLayoutHandle
+  // TODO: After protocol generation, extract predicates from
+  // DeltaTableLayoutHandle
   return std::make_unique<velox::connector::hive::HiveTableHandle>(
       tableHandle.connectorId,
       tableName,
@@ -256,4 +258,3 @@ DeltaPrestoToVeloxConnector::toHiveColumns(
 }
 
 } // namespace facebook::presto
-

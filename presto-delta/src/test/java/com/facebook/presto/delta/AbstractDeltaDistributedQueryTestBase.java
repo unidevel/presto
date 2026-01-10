@@ -122,7 +122,12 @@ public abstract class AbstractDeltaDistributedQueryTestBase
 
     protected static String goldenTablePath(String tableName)
     {
-        return AbstractDeltaDistributedQueryTestBase.class.getClassLoader().getResource(tableName).toString();
+        try {
+            return AbstractDeltaDistributedQueryTestBase.class.getClassLoader().getResource(tableName).toURI().toString();
+        }
+        catch (Exception e) {
+            throw new RuntimeException("Failed to get path for table: " + tableName, e);
+        }
     }
 
     protected static String goldenTablePathWithPrefix(String prefix, String tableName)
