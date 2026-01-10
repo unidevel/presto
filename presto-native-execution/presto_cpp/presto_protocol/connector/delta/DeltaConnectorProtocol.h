@@ -32,4 +32,3 @@ using DeltaConnectorProtocol = ConnectorProtocolTemplate<
     NotImplemented>;
 
 } // namespace facebook::presto::protocol::delta
-

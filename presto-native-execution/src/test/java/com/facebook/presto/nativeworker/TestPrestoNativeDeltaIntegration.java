@@ -22,6 +22,12 @@ import org.testng.annotations.BeforeClass;
 public class TestPrestoNativeDeltaIntegration
         extends TestDeltaIntegration
 {
+    @Override
+    protected String goldenTablePath(String tableName)
+    {
+        return extractedGoldenTablePath(tableName);
+    }
+
     @BeforeClass
     public static void silenceDeltaLogging()
     {

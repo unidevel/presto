@@ -19,8 +19,9 @@
 
 namespace facebook::presto {
 
-/// Connector for Delta Lake tables that bridges Presto protocol and Velox execution.
-/// Converts Presto Delta protocol objects to Velox connector objects for native execution.
+/// Connector for Delta Lake tables that bridges Presto protocol and Velox
+/// execution. Converts Presto Delta protocol objects to Velox connector objects
+/// for native execution.
 class DeltaPrestoToVeloxConnector final : public PrestoToVeloxConnector {
  public:
   explicit DeltaPrestoToVeloxConnector(std::string connectorName)
@@ -71,4 +72,3 @@ class DeltaPrestoToVeloxConnector final : public PrestoToVeloxConnector {
 };
 
 } // namespace facebook::presto
-

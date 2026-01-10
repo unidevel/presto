@@ -25,6 +25,12 @@ import java.nio.file.Paths;
 public class TestPrestoNativeDeltaIncrementalUpdateQueries
         extends IncrementalUpdateQueriesTest
 {
+    @Override
+    protected String goldenTablePath(String tableName)
+    {
+        return extractedGoldenTablePath(tableName);
+    }
+
     @BeforeClass
     public static void silenceDeltaLogging()
     {
