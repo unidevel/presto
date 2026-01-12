@@ -20,9 +20,19 @@ import org.testng.ITest;
 import org.testng.annotations.AfterClass;
 import org.testng.annotations.DataProvider;
 
+import java.io.IOException;
+import java.net.URI;
+import java.net.URL;
+import java.nio.file.FileSystem;
 import java.nio.file.FileSystems;
+import java.nio.file.Files;
+import java.nio.file.Path;
+import java.nio.file.StandardCopyOption;
+import java.util.Collections;
+import java.util.stream.Stream;
 
 import static java.lang.String.format;
+import static java.util.Objects.requireNonNull;
 
 public abstract class AbstractDeltaDistributedQueryTestBase
         extends AbstractTestQueryFramework implements ITest
@@ -123,10 +133,57 @@ public abstract class AbstractDeltaDistributedQueryTestBase
     protected static String goldenTablePath(String tableName)
     {
         try {
-            return AbstractDeltaDistributedQueryTestBase.class.getClassLoader().getResource(tableName).toURI().toString();
+            URL resourceUrl = AbstractDeltaDistributedQueryTestBase.class.getClassLoader().getResource(tableName);
+            if (resourceUrl == null) {
+                throw new RuntimeException("Resource not found: " + tableName);
+            }
+
+            URI resourceUri = resourceUrl.toURI();
+            String scheme = resourceUri.getScheme();
+
+            // If resource is in a JAR, extract it to a temporary directory
+            if ("jar".equals(scheme)) {
+                Path tempDir = Files.createTempDirectory("delta-table-");
+                tempDir.toFile().deleteOnExit();
+
+                try (FileSystem fs = FileSystems.newFileSystem(resourceUri, Collections.emptyMap())) {
+                    Path sourcePath = fs.getPath("/" + tableName);
+                    copyRecursively(sourcePath, tempDir.resolve(tableName));
+                }
+
+                return tempDir.resolve(tableName).toUri().toString();
+            }
+
+            // Resource is already on the filesystem
+            return resourceUri.toString();
         }
         catch (Exception e) {
             throw new RuntimeException("Failed to get path for table: " + tableName, e);
+        }
+    }
+
+    private static void copyRecursively(Path source, Path target)
+            throws IOException
+    {
+        requireNonNull(source, "source is null");
+        requireNonNull(target, "target is null");
+
+        if (Files.isDirectory(source)) {
+            Files.createDirectories(target);
+            try (Stream<Path> entries = Files.list(source)) {
+                entries.forEach(entry -> {
+                    try {
+                        copyRecursively(entry, target.resolve(entry.getFileName().toString()));
+                    }
+                    catch (IOException e) {
+                        throw new RuntimeException("Failed to copy: " + entry, e);
+                    }
+                });
+            }
+        }
+        else {
+            Files.createDirectories(target.getParent());
+            Files.copy(source, target, StandardCopyOption.REPLACE_EXISTING);
         }
     }
 
