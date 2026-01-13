@@ -27,7 +27,6 @@ import java.nio.file.FileSystem;
 import java.nio.file.FileSystems;
 import java.nio.file.Files;
 import java.nio.file.Path;
-import java.nio.file.StandardCopyOption;
 import java.util.Collections;
 import java.util.stream.Stream;
 
@@ -83,6 +82,7 @@ public abstract class AbstractDeltaDistributedQueryTestBase
         }
     }
 
+    private static Path localDataDir;
     private final ThreadLocal<String> testName = new ThreadLocal<>();
 
     @DataProvider
@@ -139,26 +139,49 @@ public abstract class AbstractDeltaDistributedQueryTestBase
             }
 
             URI resourceUri = resourceUrl.toURI();
-            String scheme = resourceUri.getScheme();
 
             // If resource is in a JAR, extract it to a temporary directory
-            if ("jar".equals(scheme)) {
-                Path tempDir = Files.createTempDirectory("delta-table-");
-                tempDir.toFile().deleteOnExit();
-
-                try (FileSystem fs = FileSystems.newFileSystem(resourceUri, Collections.emptyMap())) {
-                    Path sourcePath = fs.getPath("/" + tableName);
-                    copyRecursively(sourcePath, tempDir.resolve(tableName));
-                }
-
-                return tempDir.resolve(tableName).toUri().toString();
+            if ("jar".equals(resourceUri.getScheme())) {
+                return extractFromJar(tableName, resourceUri);
             }
 
             // Resource is already on the filesystem
             return resourceUri.toString();
         }
         catch (Exception e) {
-            throw new RuntimeException("Failed to get path for table: " + tableName, e);
+            throw new RuntimeException("Failed to get path for table: " + tableName + " - " + e.toString(), e);
+        }
+    }
+
+    private static String extractFromJar(String tableName, URI jarResourceUri)
+            throws IOException
+    {
+        synchronized (AbstractDeltaDistributedQueryTestBase.class) {
+            if (localDataDir == null) {
+                localDataDir = Files.createTempDirectory("delta-table-");
+            }
+
+            Path targetPath = localDataDir.resolve(tableName);
+            if (Files.exists(targetPath)) {
+                return targetPath.toUri().toString();
+            }
+
+            String jarUriString = jarResourceUri.toString();
+            int separatorIndex = jarUriString.indexOf("!/");
+            URI jarUri = URI.create(jarUriString.substring(0, separatorIndex));
+
+            FileSystem fs;
+            try {
+                fs = FileSystems.getFileSystem(jarUri);
+            }
+            catch (Exception e) {
+                fs = FileSystems.newFileSystem(jarUri, Collections.emptyMap());
+            }
+
+            Path sourcePath = fs.getPath("/" + tableName);
+            copyRecursively(sourcePath, targetPath);
+
+            return targetPath.toUri().toString();
         }
     }
 
@@ -176,14 +199,19 @@ public abstract class AbstractDeltaDistributedQueryTestBase
                         copyRecursively(entry, target.resolve(entry.getFileName().toString()));
                     }
                     catch (IOException e) {
-                        throw new RuntimeException("Failed to copy: " + entry, e);
+                        throw new RuntimeException("Failed to copy: " + entry + " - " + e.toString(), e);
                     }
                 });
             }
         }
         else {
-            Files.createDirectories(target.getParent());
-            Files.copy(source, target, StandardCopyOption.REPLACE_EXISTING);
+            Path parent = target.getParent();
+            if (parent != null) {
+                Files.createDirectories(parent);
+            }
+            if (!Files.exists(target)) {
+                Files.copy(source, target);
+            }
         }
     }
 
