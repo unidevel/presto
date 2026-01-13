@@ -26,6 +26,12 @@ import java.util.Map;
 public class TestPrestoNativeDeltaUppercasePartitionColumns
         extends TestUppercasePartitionColumns
 {
+    @Override
+    protected String goldenTablePath(String tableName)
+    {
+        return extractedGoldenTablePath(tableName);
+    }
+
     @BeforeClass
     public static void silenceDeltaLogging()
     {

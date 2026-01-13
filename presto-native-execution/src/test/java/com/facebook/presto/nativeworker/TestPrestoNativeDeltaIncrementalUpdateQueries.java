@@ -15,6 +15,7 @@ package com.facebook.presto.nativeworker;
 
 import com.facebook.airlift.log.Level;
 import com.facebook.airlift.log.Logging;
+import com.facebook.presto.delta.AbstractDeltaDistributedQueryTestBase;
 import com.facebook.presto.delta.IncrementalUpdateQueriesTest;
 import com.facebook.presto.testing.QueryRunner;
 import org.testng.annotations.BeforeClass;
@@ -25,6 +26,12 @@ import java.nio.file.Paths;
 public class TestPrestoNativeDeltaIncrementalUpdateQueries
         extends IncrementalUpdateQueriesTest
 {
+    @Override
+    protected String goldenTablePath(String tableName)
+    {
+        return extractedGoldenTablePath(tableName);
+    }
+
     @BeforeClass
     public static void silenceDeltaLogging()
     {

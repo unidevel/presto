@@ -130,7 +130,12 @@ public abstract class AbstractDeltaDistributedQueryTestBase
         }
     }
 
-    protected static String goldenTablePath(String tableName)
+    protected String goldenTablePath(String tableName)
+    {
+        return AbstractDeltaDistributedQueryTestBase.class.getClassLoader().getResource(tableName).toString();
+    }
+
+    protected static String extractedGoldenTablePath(String tableName)
     {
         try {
             URL resourceUrl = AbstractDeltaDistributedQueryTestBase.class.getClassLoader().getResource(tableName);
@@ -215,7 +220,7 @@ public abstract class AbstractDeltaDistributedQueryTestBase
         }
     }
 
-    protected static String goldenTablePathWithPrefix(String prefix, String tableName)
+    protected String goldenTablePathWithPrefix(String prefix, String tableName)
     {
         return goldenTablePath(prefix + FileSystems.getDefault().getSeparator() + tableName);
     }
@@ -228,7 +233,7 @@ public abstract class AbstractDeltaDistributedQueryTestBase
      * @param deltaTableName Name of the delta table which is on the classpath.
      * @param hiveTableName Name of the Hive table that the Delta table is to be registered as in HMS
      */
-    protected static void registerDeltaTableInHMS(QueryRunner queryRunner, String deltaTableName, String hiveTableName)
+    protected void registerDeltaTableInHMS(QueryRunner queryRunner, String deltaTableName, String hiveTableName)
     {
         queryRunner.execute(format(
                 "CREATE TABLE %s.\"%s\".\"%s\" (dummyColumn INT) WITH (external_location = '%s')",
