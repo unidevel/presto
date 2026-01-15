@@ -142,9 +142,6 @@ DeltaPrestoToVeloxConnector::toVeloxTableHandle(
     const protocol::TableHandle& tableHandle,
     const VeloxExprConverter& exprConverter,
     const TypeParser& typeParser) const {
-  // Note: After protocol generation, cast to DeltaTableLayoutHandle
-  // For now, we'll work with the basic table handle structure
-
   auto deltaTableHandle =
       std::dynamic_pointer_cast<const protocol::delta::DeltaTableHandle>(
           tableHandle.connectorHandle);
@@ -186,10 +183,40 @@ DeltaPrestoToVeloxConnector::toVeloxTableHandle(
             columnParseParameters));
   }
 
+  // Extract predicate from DeltaTableLayoutHandle if available
+  // Delta uses TupleDomain predicates for partition pruning, which are
+  // converted to subfield filters. The predicateText is for display only.
+  velox::common::SubfieldFilters subfieldFilters;
+
+  // Try to extract layout handle with predicate information
+  auto deltaLayout = std::dynamic_pointer_cast<
+      const protocol::delta::DeltaTableLayoutHandle>(
+      tableHandle.connectorTableLayout);
+
+  if (deltaLayout) {
+    auto domains = deltaLayout->predicate.domains;
+    if (domains) {
+      for (const auto& domain : *domains) {
+        auto deltaColumnHandle = domain.first;
+
+        // Only convert regular (non-partition) column predicates to filters
+        // Partition column predicates are already handled during split generation
+        if (deltaColumnHandle.columnType != protocol::delta::ColumnType::PARTITION) {
+          // For subfield columns, use the subfield if present; otherwise use column name
+          velox::common::Subfield subfield = deltaColumnHandle.subfield
+              ? velox::common::Subfield(*deltaColumnHandle.subfield)
+              : velox::common::Subfield(deltaColumnHandle.name);
+          subfieldFilters[std::move(subfield)] =
+              toFilter(domain.second, exprConverter, typeParser);
+        }
+      }
+    }
+  }
+
   // Build dataColumns from columnHandles, excluding partition columns.
-  // This matches Hive's behavior where dataColumns only contains non-partition
-  // columns that are actually stored in the data files. Partition columns are
-  // handled separately as constants during reading.
+  // For Delta, the column name should be consistent with names in Delta
+  // manifest file. The names in Delta manifest file are consistent with
+  // the field names in parquet data file (preserving original case).
   velox::RowTypePtr dataColumns;
   if (!columnHandles.empty()) {
     std::vector<std::string> names;
@@ -205,10 +232,6 @@ DeltaPrestoToVeloxConnector::toVeloxTableHandle(
         continue;
       }
 
-      // For Delta, the column name should be consistent with
-      // names in Delta manifest file. The names in Delta
-      // manifest file are consistent with the field names in
-      // parquet data file.
       names.emplace_back(columnHandle->name());
       auto type = columnHandle->hiveType() ? columnHandle->hiveType()
                                            : columnHandle->dataType();
@@ -224,14 +247,11 @@ DeltaPrestoToVeloxConnector::toVeloxTableHandle(
     }
   }
 
-  // Create basic table handle without predicates for now
-  // TODO: After protocol generation, extract predicates from
-  // DeltaTableLayoutHandle
   return std::make_unique<velox::connector::hive::HiveTableHandle>(
       tableHandle.connectorId,
       tableName,
       false, // isPushdownFilterEnabled
-      velox::common::SubfieldFilters{}, // subfieldFilters
+      std::move(subfieldFilters), // subfieldFilters from regular column predicates
       nullptr, // remainingFilter
       dataColumns, // dataColumns
       std::unordered_map<std::string, std::string>{},
