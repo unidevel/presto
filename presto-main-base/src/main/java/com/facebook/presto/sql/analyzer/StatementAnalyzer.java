@@ -1316,6 +1316,7 @@ class StatementAnalyzer
             }
             DistributedProcedure procedure = metadata.getProcedureRegistry().resolveDistributed(connectorId, toSchemaTableName(procedureName));
             Object[] values = extractParameterValuesInOrder(call, procedure, metadata, session, analysis.getParameters());
+            accessControl.checkCanCallProcedure(session.getRequiredTransactionId(), session.getIdentity(), session.getAccessControlContext(), procedureName);
 
             analysis.setUpdateInfo(call.getUpdateInfo());
             analysis.setDistributedProcedureType(Optional.of(procedure.getType()));
@@ -1325,6 +1326,23 @@ class StatementAnalyzer
                     TableDataRewriteDistributedProcedure tableDataRewriteDistributedProcedure = (TableDataRewriteDistributedProcedure) procedure;
                     QualifiedName qualifiedName = QualifiedName.of(tableDataRewriteDistributedProcedure.getSchema(values), tableDataRewriteDistributedProcedure.getTableName(values));
                     QualifiedObjectName tableName = createQualifiedObjectName(session, call, qualifiedName, metadata);
+
+                    analysis.addAccessControlCheckForTable(
+                            TABLE_INSERT,
+                            new AccessControlInfoForTable(
+                                    accessControl,
+                                    session.getIdentity(),
+                                    session.getTransactionId(),
+                                    session.getAccessControlContext(),
+                                    tableName));
+                    analysis.addAccessControlCheckForTable(
+                            TABLE_DELETE,
+                            new AccessControlInfoForTable(
+                                    accessControl,
+                                    session.getIdentity(),
+                                    session.getTransactionId(),
+                                    session.getAccessControlContext(),
+                                    tableName));
 
                     String filter = tableDataRewriteDistributedProcedure.getFilter(values);
                     Expression filterExpression = sqlParser.createExpression(filter);
@@ -2319,6 +2337,7 @@ class StatementAnalyzer
             }
             throw new SemanticException(NOT_SUPPORTED, "Table version type %s not supported." + type);
         }
+
         private Optional<TableHandle> processTableVersion(Table table, QualifiedObjectName name, Optional<Scope> scope)
         {
             Expression stateExpr = table.getTableVersionExpression().get().getStateExpression();
@@ -2495,7 +2514,7 @@ class StatementAnalyzer
                     if (!owner.isPresent()) {
                         throw new SemanticException(NOT_SUPPORTED, "Owner must be present for DEFINER security mode");
                     }
-                    queryIdentity = new Identity(owner.get(), Optional.empty(), session.getIdentity().getExtraCredentials());
+                    queryIdentity = new Identity(owner.get(), Optional.empty(), emptyMap(), session.getIdentity().getExtraCredentials(), emptyMap(), Optional.empty(), session.getIdentity().getReasonForSelect(), emptyList());
                     // Use ViewAccessControl when the session user is not the owner, matching regular view behavior.
                     // This checks CREATE_VIEW_WITH_SELECT_COLUMNS permissions to prevent privilege escalation
                     // where a user with only SELECT could grant access to others via a DEFINER MV.
@@ -4285,7 +4304,7 @@ class StatementAnalyzer
                 AccessControl viewAccessControl;
                 if (owner.isPresent() && !owner.get().equals(session.getIdentity().getUser())) {
                     // definer mode
-                    identity = new Identity(owner.get(), Optional.empty(), session.getIdentity().getExtraCredentials());
+                    identity = new Identity(owner.get(), Optional.empty(), emptyMap(), session.getIdentity().getExtraCredentials(), emptyMap(), Optional.empty(), session.getIdentity().getReasonForSelect(), emptyList());
                     viewAccessControl = new ViewAccessControl(accessControl);
                 }
                 else {

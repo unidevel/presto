@@ -280,6 +280,9 @@ public class TestFeaturesConfig
                 .setRewriteMinMaxByToTopNEnabled(false)
                 .setPrestoSparkExecutionEnvironment(false)
                 .setMaxSerializableObjectSize(1000)
+                .setTableScanShuffleParallelismThreshold(0.1)
+                .setTableScanShuffleStrategy(FeaturesConfig.ShuffleForTableScanStrategy.DISABLED)
+                .setSkipPushdownThroughExchangeForRemoteProjection(false)
                 .setUseConnectorProvidedSerializationCodecs(false));
     }
 
@@ -506,6 +509,9 @@ public class TestFeaturesConfig
                 .put("optimizer.expression-optimizer-used-in-expression-rewrite", "custom")
                 .put("optimizer.add-exchange-below-partial-aggregation-over-group-id", "true")
                 .put("max_serializable_object_size", "50")
+                .put("optimizer.table-scan-shuffle-parallelism-threshold", "0.3")
+                .put("optimizer.table-scan-shuffle-strategy", "ALWAYS_ENABLED")
+                .put("optimizer.skip-pushdown-through-exchange-for-remote-projection", "true")
                 .put("use-connector-provided-serialization-codecs", "true")
                 .build();
 
@@ -731,6 +737,9 @@ public class TestFeaturesConfig
                 .setInnerJoinPushdownEnabled(true)
                 .setPrestoSparkExecutionEnvironment(true)
                 .setMaxSerializableObjectSize(50)
+                .setTableScanShuffleParallelismThreshold(0.3)
+                .setTableScanShuffleStrategy(FeaturesConfig.ShuffleForTableScanStrategy.ALWAYS_ENABLED)
+                .setSkipPushdownThroughExchangeForRemoteProjection(true)
                 .setUseConnectorProvidedSerializationCodecs(true);
         assertFullMapping(properties, expected);
     }
