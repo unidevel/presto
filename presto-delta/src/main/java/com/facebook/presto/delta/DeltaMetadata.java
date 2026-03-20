@@ -232,6 +232,33 @@ public class DeltaMetadata
     }
 
     @Override
+    public ConnectorTableHandle getTableHandleForStatisticsCollection(
+            ConnectorSession session,
+            SchemaTableName tableName,
+            Map<String, Object> analyzeProperties)
+    {
+        DeltaTableHandle handle = getTableHandle(session, tableName);
+        if (handle == null) {
+            return null;
+        }
+
+        // Extract partition list from analyze properties (PART-01)
+        Optional<List<List<String>>> partitionValuesList = DeltaAnalyzeProperties.getPartitionList(analyzeProperties);
+
+        // Validate: if partition list is specified, table must be partitioned (PART-02)
+        if (partitionValuesList.isPresent()) {
+            DeltaTable deltaTable = handle.getDeltaTable();
+            boolean isPartitioned = deltaTable.getColumns().stream()
+                    .anyMatch(DeltaColumn::isPartition);
+            if (!isPartitioned) {
+                throw new PrestoException(NOT_SUPPORTED, "Only partitioned table can be analyzed with a partition list");
+            }
+        }
+
+        return handle;
+    }
+
+    @Override
     public ConnectorTableLayoutResult getTableLayoutForConstraint(
             ConnectorSession session,
             ConnectorTableHandle table,
