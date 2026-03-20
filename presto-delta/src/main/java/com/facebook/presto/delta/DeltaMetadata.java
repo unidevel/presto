@@ -39,10 +39,13 @@ import com.facebook.presto.spi.SchemaTablePrefix;
 import com.facebook.presto.spi.TableNotFoundException;
 import com.facebook.presto.spi.connector.ConnectorMetadata;
 import com.facebook.presto.spi.security.PrestoPrincipal;
+import com.facebook.presto.spi.statistics.ColumnStatisticMetadata;
+import com.facebook.presto.spi.statistics.TableStatisticsMetadata;
 import com.google.common.base.Strings;
 import com.google.common.collect.ImmutableList;
 import com.google.common.collect.ImmutableMap;
 import com.google.common.collect.ImmutableMultimap;
+import com.google.common.collect.ImmutableSet;
 import jakarta.inject.Inject;
 
 import java.util.ArrayList;
@@ -65,7 +68,11 @@ import static com.facebook.presto.hive.metastore.PrestoTableType.MANAGED_TABLE;
 import static com.facebook.presto.hive.metastore.StorageFormat.fromHiveStorageFormat;
 import static com.facebook.presto.spi.StandardErrorCode.NOT_SUPPORTED;
 import static com.facebook.presto.spi.security.PrincipalType.USER;
+import static com.facebook.presto.spi.statistics.ColumnStatisticType.MAX_VALUE;
+import static com.facebook.presto.spi.statistics.ColumnStatisticType.MIN_VALUE;
+import static com.facebook.presto.spi.statistics.ColumnStatisticType.NUMBER_OF_NON_NULL_VALUES;
 import static com.google.common.base.Preconditions.checkArgument;
+import static com.google.common.collect.ImmutableSet.toImmutableSet;
 import static java.util.Collections.emptyList;
 import static java.util.Locale.US;
 import static java.util.Objects.requireNonNull;
@@ -256,6 +263,34 @@ public class DeltaMetadata
         }
 
         return handle;
+    }
+
+    @Override
+    public TableStatisticsMetadata getStatisticsCollectionMetadata(ConnectorSession session, ConnectorTableMetadata tableMetadata)
+    {
+        List<String> partitionedBy = tableMetadata.getProperties().entrySet().stream()
+                .filter(e -> "partitioned_by".equals(e.getKey()))
+                .map(e -> e.getValue().toString())
+                .findFirst()
+                .map(list -> list.replace("[", "").replace("]", "").split(","))
+                .map(parts -> ImmutableList.copyOf(parts))
+                .orElse(ImmutableList.of());
+
+        Set<ColumnStatisticMetadata> columnStatistics = tableMetadata.getColumns().stream()
+                .filter(column -> !partitionedBy.contains(column.getName()))
+                .filter(column -> !column.isHidden())
+                .flatMap(column -> getColumnStatisticMetadata(column.getName(), column.getType()).stream())
+                .collect(toImmutableSet());
+
+        return new TableStatisticsMetadata(columnStatistics, ImmutableSet.of(), partitionedBy);
+    }
+
+    private List<ColumnStatisticMetadata> getColumnStatisticMetadata(String columnName, com.facebook.presto.common.type.Type type)
+    {
+        return ImmutableList.of(
+                MIN_VALUE.getColumnStatisticMetadata(columnName),
+                MAX_VALUE.getColumnStatisticMetadata(columnName),
+                NUMBER_OF_NON_NULL_VALUES.getColumnStatisticMetadata(columnName));
     }
 
     @Override

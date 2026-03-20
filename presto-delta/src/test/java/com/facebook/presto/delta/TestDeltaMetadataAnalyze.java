@@ -3,7 +3,7 @@
  * you may not use this file except in compliance with the License.
  * You may obtain a copy of the License at
  *
- * http://www.apache.org/licenses/LICENSE-2.0
+ *     http://www.apache.org/licenses/LICENSE-2.0
  *
  * Unless required by applicable law or agreed to in writing, software
  * distributed under the License is distributed on an "AS IS" BASIS,
@@ -14,7 +14,6 @@
 package com.facebook.presto.delta;
 
 import com.facebook.presto.common.type.TypeManager;
-import com.facebook.presto.metadata.FunctionAndTypeManager;
 import com.facebook.presto.spi.SchemaTableName;
 import com.google.common.collect.ImmutableList;
 import com.google.common.collect.ImmutableMap;
@@ -61,7 +60,7 @@ public class TestDeltaMetadataAnalyze
     {
         // Test that empty properties returns empty optional
         Map<String, Object> properties = new HashMap<>();
-        
+
         Optional<List<List<String>>> result = DeltaAnalyzeProperties.getPartitionList(properties);
 
         assertFalse(result.isPresent(), "Should return empty optional for empty properties");
@@ -72,7 +71,7 @@ public class TestDeltaMetadataAnalyze
     {
         // Test that DeltaTableHandle correctly stores snapshot information
         Optional<Long> snapshotId = Optional.of(12345L);
-        
+
         DeltaTable deltaTable = new DeltaTable(
                 "schema",
                 "table",
@@ -143,7 +142,7 @@ public class TestDeltaMetadataAnalyze
 
         assertTrue(extractedPartitions.isPresent(), "Should extract partition list");
         assertEquals(extractedPartitions.get().size(), 3, "Should have 3 partitions");
-        
+
         // Verify first partition values
         assertEquals(extractedPartitions.get().get(0).get(0), "2024", "First partition year should match");
         assertEquals(extractedPartitions.get().get(0).get(1), "01", "First partition month should match");
