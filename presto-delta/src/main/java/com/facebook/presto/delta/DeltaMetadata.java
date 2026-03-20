@@ -40,7 +40,6 @@ import com.facebook.presto.spi.TableNotFoundException;
 import com.facebook.presto.spi.connector.ConnectorMetadata;
 import com.facebook.presto.spi.security.PrestoPrincipal;
 import com.facebook.presto.spi.statistics.ColumnStatisticMetadata;
-import com.facebook.presto.spi.statistics.ComputedStatistics;
 import com.facebook.presto.spi.statistics.TableStatisticsMetadata;
 import com.google.common.base.Strings;
 import com.google.common.collect.ImmutableList;
@@ -284,7 +283,7 @@ public class DeltaMetadata
                 .flatMap(column -> getColumnStatisticMetadata(column.getName(), column.getType()).stream())
                 .collect(toImmutableSet());
 
-return new TableStatisticsMetadata(columnStatistics, ImmutableSet.of(), partitionedBy);
+        return new TableStatisticsMetadata(columnStatistics, ImmutableSet.of(), partitionedBy);
     }
 
     private List<ColumnStatisticMetadata> getColumnStatisticMetadata(String columnName, com.facebook.presto.common.type.Type type)
