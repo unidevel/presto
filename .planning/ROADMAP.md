@@ -6,7 +6,7 @@ Add ANALYZE statement support to presto-delta connector. Users can collect colum
 
 ## Phases
 
-- [ ] **Phase 1: Implementation** — Core ANALYZE functionality, properties, metadata, tests
+- [x] **Phase 1: Implementation** — Core ANALYZE functionality, properties, metadata, tests
 - [ ] **Phase 2: Optimizer Integration** — Query optimizer uses collected statistics
 
 ## Phase Details
@@ -32,8 +32,8 @@ Add ANALYZE statement support to presto-delta connector. Users can collect colum
 **Plans**: 3 plans
 
 - [x] 01-01-PLAN.md — DeltaAnalyzeProperties and connector integration
-- [ ] 01-02-PLAN.md — DeltaMetadata statistics collection
-- [ ] 01-03-PLAN.md — Testing
+- [x] 01-02-PLAN.md — DeltaMetadata statistics collection
+- [x] 01-03-PLAN.md — Testing
 
 ### Phase 2: Optimizer Integration
 
@@ -57,5 +57,5 @@ Add ANALYZE statement support to presto-delta connector. Users can collect colum
 
 | Phase | Plans Complete | Status | Completed |
 |-------|----------------|--------|-----------|
-| 1. Implementation | 1/3 | In Progress | 2026-03-20 |
+| 1. Implementation | 3/3 | Complete | 2026-03-20 |
 | 2. Optimizer Integration | 0/0 | Not started | - |
