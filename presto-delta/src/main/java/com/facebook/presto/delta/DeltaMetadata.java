@@ -72,6 +72,7 @@ import static com.facebook.presto.spi.security.PrincipalType.USER;
 import static com.facebook.presto.spi.statistics.ColumnStatisticType.MAX_VALUE;
 import static com.facebook.presto.spi.statistics.ColumnStatisticType.MIN_VALUE;
 import static com.facebook.presto.spi.statistics.ColumnStatisticType.NUMBER_OF_NON_NULL_VALUES;
+import static com.facebook.presto.spi.statistics.TableStatisticType.ROW_COUNT;
 import static com.google.common.base.Preconditions.checkArgument;
 import static com.google.common.collect.ImmutableSet.toImmutableSet;
 import static java.util.Collections.emptyList;
@@ -283,7 +284,7 @@ public class DeltaMetadata
                 .flatMap(column -> getColumnStatisticMetadata(column.getName(), column.getType()).stream())
                 .collect(toImmutableSet());
 
-        return new TableStatisticsMetadata(columnStatistics, ImmutableSet.of(), partitionedBy);
+        return new TableStatisticsMetadata(columnStatistics, ImmutableSet.of(ROW_COUNT), partitionedBy);
     }
 
     private List<ColumnStatisticMetadata> getColumnStatisticMetadata(String columnName, com.facebook.presto.common.type.Type type)
