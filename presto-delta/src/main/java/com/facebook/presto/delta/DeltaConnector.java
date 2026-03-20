@@ -11,6 +11,19 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
+/*
+ * Licensed under the Apache License, Version 2.0 (the "License");
+ * you may not use this file except in compliance with the License.
+ * You may obtain a copy of the License at
+ *
+ * http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
+ */
 package com.facebook.presto.delta;
 
 import com.facebook.airlift.bootstrap.LifeCycleManager;
@@ -49,6 +62,7 @@ public class DeltaConnector
     private final DeltaPageSourceProvider pageSourceProvider;
     private final DeltaPlanOptimizerProvider planOptimizerProvider;
     private final DeltaTableProperties deltaTableProperties;
+    private final DeltaAnalyzeProperties deltaAnalyzeProperties;
 
     @Inject
     public DeltaConnector(
@@ -59,7 +73,8 @@ public class DeltaConnector
             HiveCommonSessionProperties hiveCommonSessionProperties,
             DeltaPageSourceProvider pageSourceProvider,
             DeltaPlanOptimizerProvider planOptimizerProvider,
-            DeltaTableProperties deltaTableProperties)
+            DeltaTableProperties deltaTableProperties,
+            DeltaAnalyzeProperties deltaAnalyzeProperties)
     {
         this.lifeCycleManager = requireNonNull(lifeCycleManager, "lifeCycleManager is null");
         this.metadata = requireNonNull(metadata, "metadata is null");
@@ -69,6 +84,7 @@ public class DeltaConnector
         this.pageSourceProvider = requireNonNull(pageSourceProvider, "pageSourceProvider is null");
         this.planOptimizerProvider = requireNonNull(planOptimizerProvider, "planOptimizerProvider is null");
         this.deltaTableProperties = requireNonNull(deltaTableProperties, "tableProperties is null");
+        this.deltaAnalyzeProperties = requireNonNull(deltaAnalyzeProperties, "analyzeProperties is null");
     }
 
     @Override
@@ -113,6 +129,12 @@ public class DeltaConnector
     public List<PropertyMetadata<?>> getTableProperties()
     {
         return deltaTableProperties.getTableProperties();
+    }
+
+    @Override
+    public List<PropertyMetadata<?>> getAnalyzeProperties()
+    {
+        return deltaAnalyzeProperties.getProperties();
     }
 
     @Override

@@ -99,7 +99,9 @@ public class DeltaModule
         binder.bind(DeltaPageSourceProvider.class).in(Scopes.SINGLETON);
         binder.bind(DeltaSessionProperties.class).in(Scopes.SINGLETON);
         binder.bind(DeltaTableProperties.class).in(Scopes.SINGLETON);
+        binder.bind(DeltaAnalyzeProperties.class).in(Scopes.SINGLETON);
         binder.bind(DeltaPlanOptimizerProvider.class).in(Scopes.SINGLETON);
+        binder.bind(DeltaStatisticsStore.class).in(Scopes.SINGLETON);
         configBinder(binder).bindConfig(DeltaConfig.class);
 
         configBinder(binder).bindConfig(MetastoreConfig.class);
