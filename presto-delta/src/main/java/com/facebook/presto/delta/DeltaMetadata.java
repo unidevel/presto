@@ -40,6 +40,7 @@ import com.facebook.presto.spi.TableNotFoundException;
 import com.facebook.presto.spi.connector.ConnectorMetadata;
 import com.facebook.presto.spi.security.PrestoPrincipal;
 import com.facebook.presto.spi.statistics.ColumnStatisticMetadata;
+import com.facebook.presto.spi.statistics.ComputedStatistics;
 import com.facebook.presto.spi.statistics.TableStatisticsMetadata;
 import com.google.common.base.Strings;
 import com.google.common.collect.ImmutableList;
@@ -49,6 +50,7 @@ import com.google.common.collect.ImmutableSet;
 import jakarta.inject.Inject;
 
 import java.util.ArrayList;
+import java.util.Collection;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
@@ -282,7 +284,7 @@ public class DeltaMetadata
                 .flatMap(column -> getColumnStatisticMetadata(column.getName(), column.getType()).stream())
                 .collect(toImmutableSet());
 
-        return new TableStatisticsMetadata(columnStatistics, ImmutableSet.of(), partitionedBy);
+return new TableStatisticsMetadata(columnStatistics, ImmutableSet.of(), partitionedBy);
     }
 
     private List<ColumnStatisticMetadata> getColumnStatisticMetadata(String columnName, com.facebook.presto.common.type.Type type)
@@ -291,6 +293,44 @@ public class DeltaMetadata
                 MIN_VALUE.getColumnStatisticMetadata(columnName),
                 MAX_VALUE.getColumnStatisticMetadata(columnName),
                 NUMBER_OF_NON_NULL_VALUES.getColumnStatisticMetadata(columnName));
+    }
+
+    @Override
+    public ConnectorTableHandle beginStatisticsCollection(ConnectorSession session, ConnectorTableHandle tableHandle)
+    {
+        DeltaTableHandle handle = (DeltaTableHandle) tableHandle;
+        MetastoreContext metastoreContext = metastoreContext(session);
+
+        Optional<Table> table = metastore.getTable(
+                metastoreContext,
+                handle.getDeltaTable().getSchemaName(),
+                handle.getDeltaTable().getTableName());
+        if (!table.isPresent()) {
+            throw new TableNotFoundException(handle.toSchemaTableName());
+        }
+        return handle;
+    }
+
+    @Override
+    public void finishStatisticsCollection(
+            ConnectorSession session,
+            ConnectorTableHandle tableHandle,
+            Collection<com.facebook.presto.spi.statistics.ComputedStatistics> computedStatistics)
+    {
+        DeltaTableHandle handle = (DeltaTableHandle) tableHandle;
+        SchemaTableName tableName = handle.toSchemaTableName();
+        MetastoreContext metastoreContext = metastoreContext(session);
+
+        Table table = metastore.getTable(metastoreContext, tableName.getSchemaName(), tableName.getTableName())
+                .orElseThrow(() -> new TableNotFoundException(tableName));
+
+        if (computedStatistics.isEmpty()) {
+            return;
+        }
+
+        for (com.facebook.presto.spi.statistics.ComputedStatistics stats : computedStatistics) {
+            stats.getColumnStatistics();
+        }
     }
 
     @Override
