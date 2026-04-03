@@ -1,0 +1,259 @@
+name: Advance velox
+
+on:
+  schedule:
+  - cron: '0 9 * * *' # Daily at 09:00 UTC
+  workflow_dispatch:
+    inputs:
+      dry_run:
+        description: 'Run in dry-run mode (skip PR creation)'
+        required: false
+        default: 'false'
+        type: choice
+        options:
+        - 'true'
+        - 'false'
+
+permissions:
+  contents: write
+  pull-requests: write
+
+env:
+  NOTIFICATION_GROUP: ${{ vars.VELOX_UPDATE_NOTIFICATION_GROUP || '@unidevel' }}
+  BASE_BRANCH: ${{ github.event_name == 'schedule' && 'master' || github.ref_name }}
+
+jobs:
+  update-submodule:
+    runs-on: ubuntu-latest
+    steps:
+    - name: Checkout repository
+      uses: actions/checkout@v4
+      with:
+        submodules: recursive
+        token: ${{ secrets.GITHUB_TOKEN }}
+        ref: ${{ env.BASE_BRANCH }}
+
+    - name: Configure Git
+      run: |
+        git config user.name "github-actions[bot]"
+        git config user.email "github-actions[bot]@users.noreply.github.com"
+
+    - name: Create branch name
+      id: branch_name
+      run: |
+        BRANCH_NAME="velox-update-$(date +'%Y%m%d')"
+        echo "branch_name=$BRANCH_NAME" >> $GITHUB_OUTPUT
+
+    - name: Update Velox submodule
+      run: |
+        git -C presto-native-execution/velox checkout main
+        git -C presto-native-execution/velox pull
+
+    - name: Check for changes
+      id: check_changes
+      run: |
+        if git diff --quiet presto-native-execution/velox; then
+          echo "has_changes=false" >> $GITHUB_OUTPUT
+          echo "No changes detected in Velox submodule"
+        else
+          echo "has_changes=true" >> $GITHUB_OUTPUT
+          VELOX_COMMIT=$(cd presto-native-execution/velox && git rev-parse HEAD)
+          echo "velox_commit=$VELOX_COMMIT" >> $GITHUB_OUTPUT
+          echo "Changes detected in Velox submodule (commit: $VELOX_COMMIT)"
+        fi
+
+    - name: Create branch and push changes
+      if: steps.check_changes.outputs.has_changes == 'true' && github.event.inputs.dry_run != 'true'
+      run: |
+        # Ensure we're on the base branch
+        git checkout ${{ env.BASE_BRANCH }}
+        # Create and switch to new branch (or switch if it exists)
+        git checkout -B ${{ steps.branch_name.outputs.branch_name }}
+        # Stage the submodule changes
+        git add presto-native-execution/velox
+        # Commit the changes
+        git commit -m "Update Velox submodule to ${{ steps.check_changes.outputs.velox_commit }}"
+        # Force push the branch to handle updates
+        git push -f origin ${{ steps.branch_name.outputs.branch_name }}
+
+    - name: Create or Update Pull Request
+      if: steps.check_changes.outputs.has_changes == 'true' && github.event.inputs.dry_run != 'true'
+      id: create_pr
+      env:
+        GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+      run: |
+        BRANCH_NAME="${{ steps.branch_name.outputs.branch_name }}"
+        BASE_BRANCH="${{ env.BASE_BRANCH }}"
+        PR_TITLE="chore(ci): Advance velox ($(date +'%Y-%m-%d'))"
+
+        # Create PR body file (used for both new and existing PRs)
+        cat > /tmp/pr_body.txt <<'EOF'
+        ```
+        == NO RELEASE NOTE ==
+        ```
+
+        ## Summary by Sourcery
+
+        Chores:
+        - Update the Velox dependency reference under presto-native-execution to the latest desired commit.
+        EOF
+
+        # Check if PR already exists for this branch
+        EXISTING_PR=$(gh pr list --head "$BRANCH_NAME" --base "$BASE_BRANCH" --state open --json number,url --jq '.[0]')
+
+        if [ -n "$EXISTING_PR" ] && [ "$EXISTING_PR" != "null" ]; then
+          # PR exists, extract details and update it
+          PR_NUMBER=$(echo "$EXISTING_PR" | jq -r '.number')
+          PR_URL=$(echo "$EXISTING_PR" | jq -r '.url')
+
+          echo "pr_url=$PR_URL" >> $GITHUB_OUTPUT
+          echo "pr_number=$PR_NUMBER" >> $GITHUB_OUTPUT
+          echo "pr_exists=true" >> $GITHUB_OUTPUT
+          echo "Found existing PR #$PR_NUMBER: $PR_URL"
+
+          gh pr edit "$PR_NUMBER" \
+            --title "$PR_TITLE" \
+            --body-file /tmp/pr_body.txt
+          echo "Updated existing PR #$PR_NUMBER with new title and body"
+        else
+          # No existing PR, create new one
+          PR_URL=$(gh pr create \
+            --title "$PR_TITLE" \
+            --body-file /tmp/pr_body.txt \
+            --base "$BASE_BRANCH" \
+            --head "$BRANCH_NAME")
+
+          PR_NUMBER=$(echo "$PR_URL" | grep -oE '[0-9]+$')
+
+          echo "pr_url=$PR_URL" >> $GITHUB_OUTPUT
+          echo "pr_number=$PR_NUMBER" >> $GITHUB_OUTPUT
+          echo "pr_exists=false" >> $GITHUB_OUTPUT
+          echo "Created new PR #$PR_NUMBER: $PR_URL"
+        fi
+
+    - name: Wait for CI checks to start
+      if: steps.check_changes.outputs.has_changes == 'true' && github.event.inputs.dry_run != 'true'
+      run: |
+        echo "Waiting 30 seconds for CI checks to initialize..."
+        sleep 30
+
+    - name: Monitor CI status
+      if: steps.check_changes.outputs.has_changes == 'true' && github.event.inputs.dry_run != 'true'
+      id: ci_status
+      env:
+        GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+      run: |
+        PR_NUMBER=${{ steps.create_pr.outputs.pr_number }}
+        MAX_ATTEMPTS=60  # Wait up to 30 minutes (60 * 30 seconds)
+        ATTEMPT=0
+
+        echo "Monitoring CI status for PR #$PR_NUMBER..."
+
+        while [ $ATTEMPT -lt $MAX_ATTEMPTS ]; do
+          # Get the check runs status using available fields
+          CHECKS_JSON=$(gh pr checks $PR_NUMBER --json state,name,workflow 2>/dev/null || echo "[]")
+
+          # Check if there are any checks
+          if [ "$CHECKS_JSON" = "[]" ] || [ -z "$CHECKS_JSON" ]; then
+            echo "No CI checks found yet, waiting..."
+            ATTEMPT=$((ATTEMPT + 1))
+            sleep 30
+            continue
+          fi
+
+          # Get all states
+          STATES=$(echo "$CHECKS_JSON" | jq -r '.[].state' | sort -u)
+
+          # Check if all checks are completed (no PENDING, QUEUED, or IN_PROGRESS)
+          if ! echo "$STATES" | grep -qE "PENDING|QUEUED|IN_PROGRESS"; then
+            # All checks completed, check for failures
+            if echo "$STATES" | grep -qE "FAILURE|CANCELLED|TIMED_OUT|ERROR"; then
+              echo "ci_result=failure" >> $GITHUB_OUTPUT
+              echo "CI checks failed"
+              echo "Check states: $STATES"
+              exit 0
+            elif echo "$STATES" | grep -q "SUCCESS"; then
+              # Check if ALL checks are successful
+              FAILED_COUNT=$(echo "$CHECKS_JSON" | jq '[.[] | select(.state != "SUCCESS")] | length')
+              if [ "$FAILED_COUNT" -eq 0 ]; then
+                echo "ci_result=success" >> $GITHUB_OUTPUT
+                echo "All CI checks passed"
+                exit 0
+              else
+                echo "ci_result=failure" >> $GITHUB_OUTPUT
+                echo "Some CI checks failed"
+                echo "Check states: $STATES"
+                exit 0
+              fi
+            fi
+          fi
+
+          ATTEMPT=$((ATTEMPT + 1))
+          echo "Attempt $ATTEMPT/$MAX_ATTEMPTS - CI still running..."
+          echo "Current states: $STATES"
+          sleep 30
+        done
+
+        echo "ci_result=timeout" >> $GITHUB_OUTPUT
+        echo "CI monitoring timed out after 30 minutes"
+
+    - name: Notify on CI success
+      if: steps.check_changes.outputs.has_changes == 'true' && steps.ci_status.outputs.ci_result == 'success' && github.event.inputs.dry_run != 'true'
+      env:
+        GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+      run: |
+        gh pr comment ${{ steps.create_pr.outputs.pr_number }} --body "✅ **CI Checks Passed**
+
+        All CI checks have completed successfully for this Velox submodule update.
+
+        ${{ env.NOTIFICATION_GROUP }} - This PR is ready for review."
+
+    - name: Notify on CI failure
+      if: steps.check_changes.outputs.has_changes == 'true' && steps.ci_status.outputs.ci_result == 'failure' && github.event.inputs.dry_run != 'true'
+      env:
+        GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+      run: |
+        gh pr comment ${{ steps.create_pr.outputs.pr_number }} --body "❌ **CI Checks Failed**
+
+        Some CI checks have failed for this Velox submodule update.
+
+        ${{ env.NOTIFICATION_GROUP }} - Please review the failed checks and take appropriate action."
+
+    - name: Notify on CI timeout
+      if: steps.check_changes.outputs.has_changes == 'true' && steps.ci_status.outputs.ci_result == 'timeout' && github.event.inputs.dry_run != 'true'
+      env:
+        GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+      run: |
+        gh pr comment ${{ steps.create_pr.outputs.pr_number }} --body "⏱️ **CI Monitoring Timeout**
+
+        CI checks are still running after 30 minutes of monitoring.
+
+        ${{ env.NOTIFICATION_GROUP }} - Please check the CI status manually."
+
+    - name: Summary
+      if: always()
+      run: |
+        echo "## Workflow Summary" >> $GITHUB_STEP_SUMMARY
+        echo "" >> $GITHUB_STEP_SUMMARY
+
+        if [ "${{ steps.check_changes.outputs.has_changes }}" == "true" ]; then
+          echo "✅ Velox submodule updated to commit: \`${{ steps.check_changes.outputs.velox_commit }}\`" >> $GITHUB_STEP_SUMMARY
+
+          if [ "${{ github.event.inputs.dry_run }}" == "true" ]; then
+            echo "🔍 **Dry run mode** - No PR was created" >> $GITHUB_STEP_SUMMARY
+          else
+            echo "📝 Pull Request: ${{ steps.create_pr.outputs.pr_url }}" >> $GITHUB_STEP_SUMMARY
+
+            if [ "${{ steps.ci_status.outputs.ci_result }}" == "success" ]; then
+              echo "✅ CI Status: All checks passed" >> $GITHUB_STEP_SUMMARY
+            elif [ "${{ steps.ci_status.outputs.ci_result }}" == "failure" ]; then
+              echo "❌ CI Status: Some checks failed" >> $GITHUB_STEP_SUMMARY
+              exit 1
+            elif [ "${{ steps.ci_status.outputs.ci_result }}" == "timeout" ]; then
+              echo "⏱️ CI Status: Monitoring timed out" >> $GITHUB_STEP_SUMMARY
+              exit 1
+            fi
+          fi
+        else
+          echo "ℹ️ No changes detected in Velox submodule" >> $GITHUB_STEP_SUMMARY
+        fi
