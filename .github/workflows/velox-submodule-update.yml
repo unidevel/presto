@@ -11,10 +11,6 @@ on:
         default: false
         type: boolean
 
-permissions:
-  contents: write
-  pull-requests: write
-
 env:
   NOTIFICATION_GROUP: ${{ vars.VELOX_UPDATE_NOTIFICATION_GROUP || '@prestodb/team-velox' }}
   BASE_BRANCH: ${{ github.event_name == 'schedule' && 'master' || github.ref_name }}
@@ -22,14 +18,21 @@ env:
   FORCE_ADVANCE: ${{ github.event_name == 'schedule' || github.event.inputs.force_advance == 'true' }}
 
 jobs:
-  create-velox-advance-pr:
+  create-pr:
     runs-on: ubuntu-latest
+    permissions:
+      contents: write
+      pull-requests: write
+    outputs:
+      pr_number: ${{ steps.pr_info.outputs.pr_number }}
+      pr_url: ${{ steps.pr_info.outputs.pr_url }}
+      should_monitor: ${{ steps.pr_info.outputs.should_monitor }}
     steps:
       - name: Checkout repository
         uses: actions/checkout@v4
         with:
           submodules: recursive
-          token: ${{ secrets.GITHUB_TOKEN }}
+          token: ${{ secrets.PRESTODB_CI_TOKEN }}
           ref: ${{ env.BASE_BRANCH }}
           persist-credentials: false
 
@@ -41,7 +44,7 @@ jobs:
       - name: Check for existing PR
         id: check_pr
         env:
-          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          GH_TOKEN: ${{ secrets.PRESTODB_CI_TOKEN }}
           BASE_BRANCH: ${{ env.BASE_BRANCH }}
           VELOX_UPDATE_BRANCH: ${{ env.VELOX_UPDATE_BRANCH }}
         run: |
@@ -127,7 +130,7 @@ jobs:
       - name: Notify about new changes on existing PR
         if: steps.check_pr.outputs.pr_exists == 'true' && steps.check_new_changes.outputs.new_changes_available == 'true' && env.FORCE_ADVANCE != 'true'
         env:
-          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          GH_TOKEN: ${{ secrets.PRESTODB_CI_TOKEN }}
           PR_NUMBER: ${{ steps.check_pr.outputs.pr_number }}
           CURRENT_COMMIT_SHORT: ${{ steps.check_new_changes.outputs.current_commit_short }}
           CURRENT_DATE: ${{ steps.check_new_changes.outputs.current_date }}
@@ -176,7 +179,7 @@ jobs:
           BASE_BRANCH: ${{ env.BASE_BRANCH }}
           VELOX_UPDATE_BRANCH: ${{ env.VELOX_UPDATE_BRANCH }}
           VELOX_COMMIT: ${{ steps.check_changes.outputs.velox_commit }}
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          GITHUB_TOKEN: ${{ secrets.PRESTODB_CI_TOKEN }}
           GITHUB_REPOSITORY: ${{ github.repository }}
         run: |
           # Configure git remote with token for pushing (since persist-credentials: false)
@@ -197,7 +200,7 @@ jobs:
         if: (steps.check_pr.outputs.pr_exists != 'true' || env.FORCE_ADVANCE == 'true') && steps.check_changes.outputs.has_changes == 'true'
         id: create_pr
         env:
-          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          GH_TOKEN: ${{ secrets.PRESTODB_CI_TOKEN }}
           BASE_BRANCH: ${{ env.BASE_BRANCH }}
           VELOX_UPDATE_BRANCH: ${{ env.VELOX_UPDATE_BRANCH }}
           PR_EXISTS: ${{ steps.check_pr.outputs.pr_exists }}
@@ -274,18 +277,78 @@ jobs:
             echo "pr_url=$CREATE_PR_URL" >> $GITHUB_OUTPUT
           fi
 
+          # Determine if we should monitor CI
+          if [ -n "$CHECK_PR_NUMBER" ] || [ -n "$CREATE_PR_NUMBER" ]; then
+            echo "should_monitor=true" >> $GITHUB_OUTPUT
+          else
+            echo "should_monitor=false" >> $GITHUB_OUTPUT
+          fi
+
+      - name: Summary
+        if: always()
+        env:
+          PR_EXISTS: ${{ steps.check_pr.outputs.pr_exists }}
+          FORCE_ADVANCE: ${{ env.FORCE_ADVANCE }}
+          PR_URL: ${{ steps.pr_info.outputs.pr_url }}
+          NEW_CHANGES_AVAILABLE: ${{ steps.check_new_changes.outputs.new_changes_available }}
+          CURRENT_COMMIT_SHORT: ${{ steps.check_new_changes.outputs.current_commit_short }}
+          CURRENT_DATE: ${{ steps.check_new_changes.outputs.current_date }}
+          CURRENT_TITLE: ${{ steps.check_new_changes.outputs.current_title }}
+          CURRENT_COMMIT: ${{ steps.check_new_changes.outputs.current_commit }}
+          LATEST_COMMIT_SHORT: ${{ steps.check_new_changes.outputs.latest_commit_short }}
+          LATEST_DATE: ${{ steps.check_new_changes.outputs.latest_date }}
+          LATEST_TITLE: ${{ steps.check_new_changes.outputs.latest_title }}
+          LATEST_COMMIT: ${{ steps.check_new_changes.outputs.latest_commit }}
+          HAS_CHANGES: ${{ steps.check_changes.outputs.has_changes }}
+          VELOX_COMMIT: ${{ steps.check_changes.outputs.velox_commit }}
+        run: |
+          echo "## Create PR Job Summary" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+
+          # Check if we updated or just monitored existing PR
+          if [ "$PR_EXISTS" = "true" ] && [ "$FORCE_ADVANCE" != "true" ]; then
+            echo "ℹ️ Existing PR found" >> $GITHUB_STEP_SUMMARY
+            echo "📝 Pull Request: $PR_URL" >> $GITHUB_STEP_SUMMARY
+
+            # Check if new changes are available
+            if [ "$NEW_CHANGES_AVAILABLE" = "true" ]; then
+              echo "" >> $GITHUB_STEP_SUMMARY
+              echo "🔔 **New Velox changes available:**" >> $GITHUB_STEP_SUMMARY
+              echo "- **Current commit:** \`$CURRENT_COMMIT_SHORT\` $CURRENT_DATE [$CURRENT_TITLE](https://github.com/facebookincubator/velox/commits/$CURRENT_COMMIT)" >> $GITHUB_STEP_SUMMARY
+              echo "- **Latest commit:** \`$LATEST_COMMIT_SHORT\` $LATEST_DATE [$LATEST_TITLE](https://github.com/facebookincubator/velox/commits/$LATEST_COMMIT)" >> $GITHUB_STEP_SUMMARY
+              echo "" >> $GITHUB_STEP_SUMMARY
+              echo "💡 Re-run with \`force_advance: true\` to update the PR" >> $GITHUB_STEP_SUMMARY
+            fi
+          elif [ "$NEW_CHANGES_AVAILABLE" = "false" ]; then
+            echo "ℹ️ Velox is up to date at commit: \`$CURRENT_COMMIT_SHORT\` $CURRENT_DATE [$CURRENT_TITLE](https://github.com/facebookincubator/velox/commits/$CURRENT_COMMIT)" >> $GITHUB_STEP_SUMMARY
+          elif [ "$HAS_CHANGES" = "true" ]; then
+            echo "✅ Velox submodule updated to commit: \`$LATEST_COMMIT_SHORT\` $LATEST_DATE [$LATEST_TITLE](https://github.com/facebookincubator/velox/commits/$LATEST_COMMIT)" >> $GITHUB_STEP_SUMMARY
+            echo "📝 Pull Request: $PR_URL" >> $GITHUB_STEP_SUMMARY
+          fi
+
+  check-status:
+    runs-on: ubuntu-latest
+    permissions:
+      pull-requests: write
+    needs: create-pr
+    if: needs.create-pr.outputs.should_monitor == 'true'
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+        with:
+          ref: ${{ env.VELOX_UPDATE_BRANCH }}
+          persist-credentials: false
+
       - name: Wait for CI checks to start
-        if: steps.pr_info.outputs.pr_number != ''
         run: |
           echo "Waiting 30 seconds for CI checks to initialize..."
           sleep 30
 
       - name: Monitor CI status
-        if: steps.pr_info.outputs.pr_number != ''
         id: ci_status
         env:
-          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-          PR_NUMBER: ${{ steps.pr_info.outputs.pr_number }}
+          GH_TOKEN: ${{ secrets.PRESTODB_CI_TOKEN }}
+          PR_NUMBER: ${{ needs.create-pr.outputs.pr_number }}
         run: |
           MAX_ATTEMPTS=600  # Wait up to 5 hours (600 * 30 seconds)
           ATTEMPT=0
@@ -294,7 +357,15 @@ jobs:
 
           while [ $ATTEMPT -lt $MAX_ATTEMPTS ]; do
             # Get the check runs status using available fields
-            CHECKS_JSON=$(gh pr checks $PR_NUMBER --json state,name,workflow 2>/dev/null || echo "[]")
+            echo "Attempting to fetch PR checks..."
+            CHECKS_JSON=$(gh pr checks $PR_NUMBER --json state,name,workflow 2>&1)
+            EXIT_CODE=$?
+
+            if [ $EXIT_CODE -ne 0 ]; then
+              echo "Error fetching PR checks (exit code: $EXIT_CODE):"
+              echo "$CHECKS_JSON"
+              CHECKS_JSON="[]"
+            fi
 
             # Check if there are any checks
             if [ "$CHECKS_JSON" = "[]" ] || [ -z "$CHECKS_JSON" ]; then
@@ -348,11 +419,11 @@ jobs:
           echo "CI monitoring timed out after 5 hours"
 
       - name: Notify on CI success
-        if: steps.pr_info.outputs.pr_number != '' && steps.ci_status.outputs.ci_result == 'success'
+        if: steps.ci_status.outputs.ci_result == 'success'
         env:
-          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-          PR_NUMBER: ${{ steps.pr_info.outputs.pr_number }}
-          NOTIFICATION_GROUP: ${{ env.NOTIFICATION_GROUP }}
+          GH_TOKEN: ${{ secrets.PRESTODB_CI_TOKEN }}
+          PR_NUMBER: ${{ needs.create-pr.outputs.pr_number }}
+          NOTIFICATION_GROUP: ${{ vars.VELOX_UPDATE_NOTIFICATION_GROUP || '@prestodb/team-velox' }}
         run: |
           gh pr comment "$PR_NUMBER" --body "✅ **CI Checks Passed**
 
@@ -361,11 +432,11 @@ jobs:
           $NOTIFICATION_GROUP This PR is ready for review."
 
       - name: Notify on CI failure
-        if: steps.pr_info.outputs.pr_number != '' && steps.ci_status.outputs.ci_result == 'failure'
+        if: steps.ci_status.outputs.ci_result == 'failure'
         env:
-          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-          PR_NUMBER: ${{ steps.pr_info.outputs.pr_number }}
-          NOTIFICATION_GROUP: ${{ env.NOTIFICATION_GROUP }}
+          GH_TOKEN: ${{ secrets.PRESTODB_CI_TOKEN }}
+          PR_NUMBER: ${{ needs.create-pr.outputs.pr_number }}
+          NOTIFICATION_GROUP: ${{ vars.VELOX_UPDATE_NOTIFICATION_GROUP || '@prestodb/team-velox' }}
         run: |
           gh pr comment "$PR_NUMBER" --body "❌ **CI Checks Failed**
 
@@ -374,11 +445,11 @@ jobs:
           $NOTIFICATION_GROUP Please review the failed checks and take appropriate action."
 
       - name: Notify on CI timeout
-        if: steps.pr_info.outputs.pr_number != '' && steps.ci_status.outputs.ci_result == 'timeout'
+        if: steps.ci_status.outputs.ci_result == 'timeout'
         env:
-          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-          PR_NUMBER: ${{ steps.pr_info.outputs.pr_number }}
-          NOTIFICATION_GROUP: ${{ env.NOTIFICATION_GROUP }}
+          GH_TOKEN: ${{ secrets.PRESTODB_CI_TOKEN }}
+          PR_NUMBER: ${{ needs.create-pr.outputs.pr_number }}
+          NOTIFICATION_GROUP: ${{ vars.VELOX_UPDATE_NOTIFICATION_GROUP || '@prestodb/team-velox' }}
         run: |
           gh pr comment "$PR_NUMBER" --body "⏱️ **CI Monitoring Timeout**
 
@@ -389,56 +460,21 @@ jobs:
       - name: Summary
         if: always()
         env:
-          PR_EXISTS: ${{ steps.check_pr.outputs.pr_exists }}
-          FORCE_ADVANCE: ${{ env.FORCE_ADVANCE }}
-          PR_URL: ${{ steps.pr_info.outputs.pr_url }}
-          NEW_CHANGES_AVAILABLE: ${{ steps.check_new_changes.outputs.new_changes_available }}
-          CURRENT_COMMIT_SHORT: ${{ steps.check_new_changes.outputs.current_commit_short }}
-          CURRENT_DATE: ${{ steps.check_new_changes.outputs.current_date }}
-          CURRENT_TITLE: ${{ steps.check_new_changes.outputs.current_title }}
-          CURRENT_COMMIT: ${{ steps.check_new_changes.outputs.current_commit }}
-          LATEST_COMMIT_SHORT: ${{ steps.check_new_changes.outputs.latest_commit_short }}
-          LATEST_DATE: ${{ steps.check_new_changes.outputs.latest_date }}
-          LATEST_TITLE: ${{ steps.check_new_changes.outputs.latest_title }}
-          LATEST_COMMIT: ${{ steps.check_new_changes.outputs.latest_commit }}
-          HAS_CHANGES: ${{ steps.check_changes.outputs.has_changes }}
-          VELOX_COMMIT: ${{ steps.check_changes.outputs.velox_commit }}
           CI_RESULT: ${{ steps.ci_status.outputs.ci_result }}
+          PR_URL: ${{ needs.create-pr.outputs.pr_url }}
         run: |
-          echo "## Workflow Summary" >> $GITHUB_STEP_SUMMARY
+          echo "## Check Status Job Summary" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "📝 Pull Request: $PR_URL" >> $GITHUB_STEP_SUMMARY
           echo "" >> $GITHUB_STEP_SUMMARY
 
-          # Check if we updated or just monitored existing PR
-          if [ "$PR_EXISTS" = "true" ] && [ "$FORCE_ADVANCE" != "true" ]; then
-            echo "ℹ️ Existing PR found - monitoring CI status only" >> $GITHUB_STEP_SUMMARY
-            echo "📝 Pull Request: $PR_URL" >> $GITHUB_STEP_SUMMARY
-
-            # Check if new changes are available
-            if [ "$NEW_CHANGES_AVAILABLE" = "true" ]; then
-              echo "" >> $GITHUB_STEP_SUMMARY
-              echo "🔔 **New Velox changes available:**" >> $GITHUB_STEP_SUMMARY
-              echo "- **Current commit:** \`$CURRENT_COMMIT_SHORT\` $CURRENT_DATE [$CURRENT_TITLE](https://github.com/facebookincubator/velox/commits/$CURRENT_COMMIT)" >> $GITHUB_STEP_SUMMARY
-              echo "- **Latest commit:** \`$LATEST_COMMIT_SHORT\` $LATEST_DATE [$LATEST_TITLE](https://github.com/facebookincubator/velox/commits/$LATEST_COMMIT)" >> $GITHUB_STEP_SUMMARY
-              echo "" >> $GITHUB_STEP_SUMMARY
-              echo "💡 Re-run with \`force_advance: true\` to update the PR" >> $GITHUB_STEP_SUMMARY
-            fi
-          elif [ "$NEW_CHANGES_AVAILABLE" = "false" ]; then
-            echo "ℹ️ Velox is up to date at commit: \`$CURRENT_COMMIT_SHORT\` $CURRENT_DATE [$CURRENT_TITLE](https://github.com/facebookincubator/velox/commits/$CURRENT_COMMIT)" >> $GITHUB_STEP_SUMMARY
-          elif [ "$HAS_CHANGES" = "true" ]; then
-            echo "✅ Velox submodule updated to commit: \`$LATEST_COMMIT_SHORT\` $LATEST_DATE [$LATEST_TITLE](https://github.com/facebookincubator/velox/commits/$LATEST_COMMIT)" >> $GITHUB_STEP_SUMMARY
-            echo "📝 Pull Request: $PR_URL" >> $GITHUB_STEP_SUMMARY
-          fi
-
-          # Show CI status if available
+          # Show CI status
           if [ "$CI_RESULT" = "success" ]; then
-            echo "" >> $GITHUB_STEP_SUMMARY
             echo "✅ CI Status: All checks passed" >> $GITHUB_STEP_SUMMARY
           elif [ "$CI_RESULT" = "failure" ]; then
-            echo "" >> $GITHUB_STEP_SUMMARY
             echo "❌ CI Status: Some checks failed" >> $GITHUB_STEP_SUMMARY
             exit 1
           elif [ "$CI_RESULT" = "timeout" ]; then
-            echo "" >> $GITHUB_STEP_SUMMARY
             echo "⏱️ CI Status: Monitoring timed out" >> $GITHUB_STEP_SUMMARY
             exit 1
           fi
