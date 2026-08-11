@@ -40,7 +40,6 @@ import com.facebook.presto.parquet.predicate.Predicate;
 import com.facebook.presto.parquet.predicate.TupleDomainParquetPredicate;
 import com.facebook.presto.parquet.reader.ColumnIndexFilterUtils.OffsetRange;
 import com.facebook.presto.parquet.spark.Variant;
-import io.airlift.slice.Slice;
 import it.unimi.dsi.fastutil.booleans.BooleanArrayList;
 import it.unimi.dsi.fastutil.booleans.BooleanList;
 import it.unimi.dsi.fastutil.ints.IntArrayList;
@@ -548,23 +547,26 @@ public class ParquetReader
     private ColumnChunk readVariant(VariantField field)
             throws IOException
     {
+        // Both fields must be read for every batch, otherwise the two column readers fall out of
+        // step and later batches pair a value with the metadata of another row.
         ColumnChunk valueChunk = readColumnChunk(field.getValue());
-        int positionCount = valueChunk.getBlock().getPositionCount();
+        ColumnChunk metadataChunk = readColumnChunk(field.getMetadata());
+        Block valueBlock = valueChunk.getBlock();
+        Block metadataBlock = metadataChunk.getBlock();
+        int positionCount = valueBlock.getPositionCount();
 
         BlockBuilder variantBlock = VARCHAR.createBlockBuilder(null, positionCount);
-        if (positionCount > 0) {
-            ColumnChunk metadataChunk = readColumnChunk(field.getMetadata());
-            ZoneId zoneId = ZoneOffset.UTC;
-            for (int i = 0; i < valueChunk.getBlock().getPositionCount(); i++) {
-                if (valueChunk.getBlock().isNull(i) || metadataChunk.getBlock().isNull(i)) {
-                    variantBlock.appendNull();
-                }
-                else {
-                    Slice value = VARBINARY.getSlice(valueChunk.getBlock(), i);
-                    Slice metadata = VARBINARY.getSlice(metadataChunk.getBlock(), i);
-                    Variant variant = new Variant(value.byteArray(), metadata.byteArray());
-                    VARCHAR.writeSlice(variantBlock, utf8Slice(variant.toJson(zoneId)));
-                }
+        ZoneId zoneId = ZoneOffset.UTC;
+        for (int i = 0; i < positionCount; i++) {
+            if (valueBlock.isNull(i) || metadataBlock.isNull(i)) {
+                variantBlock.appendNull();
+            }
+            else {
+                // getBytes() copies the bytes of this position only. byteArray() would return the
+                // whole buffer of the block, which starts at the first position of the batch.
+                byte[] value = VARBINARY.getSlice(valueBlock, i).getBytes();
+                byte[] metadata = VARBINARY.getSlice(metadataBlock, i).getBytes();
+                VARCHAR.writeSlice(variantBlock, utf8Slice(new Variant(value, metadata).toJson(zoneId)));
             }
         }
         return new ColumnChunk(variantBlock.build(), valueChunk.getDefinitionLevels(), valueChunk.getRepetitionLevels());

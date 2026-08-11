@@ -46,15 +46,22 @@ public class TestDeltaVariantType
         MaterializedResult result = computeActual(session, query);
         assertEquals(result.getMaterializedRows().size(), 5);
 
-        // Verify the data values
+        // Verify the data values. Every row is checked: the reader hands out one batch of 1 row and
+        // then batches of 2, so a row that is not the first of its batch has to be covered too.
         assertEquals(result.getMaterializedRows().get(0).getField(0), 1);
         assertEquals(result.getMaterializedRows().get(0).getField(1), "{\"active\":true,\"age\":30,\"user\":\"alice\"}");
 
         assertEquals(result.getMaterializedRows().get(1).getField(0), 2);
         assertEquals(result.getMaterializedRows().get(1).getField(1), "{\"age\":25,\"tags\":[\"admin\",\"dev\"],\"user\":\"bob\"}");
 
+        assertEquals(result.getMaterializedRows().get(2).getField(0), 3);
+        assertEquals(result.getMaterializedRows().get(2).getField(1), "{\"address\":{\"city\":\"NYC\",\"zip\":\"10001\"},\"age\":35,\"user\":\"charlie\"}");
+
         assertEquals(result.getMaterializedRows().get(3).getField(0), 4);
         assertEquals(result.getMaterializedRows().get(3).getField(1), "{\"age\":28,\"scores\":[95,87,92],\"user\":\"diana\"}");
+
+        assertEquals(result.getMaterializedRows().get(4).getField(0), 5);
+        assertEquals(result.getMaterializedRows().get(4).getField(1), "{\"active\":false,\"age\":42,\"role\":\"manager\",\"user\":\"eve\"}");
     }
 
     @Test
@@ -170,8 +177,8 @@ public class TestDeltaVariantType
                 goldenTablePathWithPrefix(DELTA_V3, "test_variant"));
         MaterializedResult result = computeActual(session, query);
 
-        // Only rows 2 and 3 have tags (bob)
-        assertEquals(result.getMaterializedRows().size(), 4);
+        // Only id 2, bob, has tags
+        assertEquals(result.getMaterializedRows().size(), 2);
 
         // Row 1: bob id=2, tag=admin
         assertEquals(result.getMaterializedRows().get(0).getField(0), 2);
@@ -182,16 +189,6 @@ public class TestDeltaVariantType
         assertEquals(result.getMaterializedRows().get(1).getField(0), 2);
         assertEquals(result.getMaterializedRows().get(1).getField(1), "bob");
         assertEquals(result.getMaterializedRows().get(1).getField(2), "dev");
-
-        // Row 3: bob id=3, tag=admin
-        assertEquals(result.getMaterializedRows().get(2).getField(0), 3);
-        assertEquals(result.getMaterializedRows().get(2).getField(1), "bob");
-        assertEquals(result.getMaterializedRows().get(2).getField(2), "admin");
-
-        // Row 4: bob id=3, tag=dev
-        assertEquals(result.getMaterializedRows().get(3).getField(0), 3);
-        assertEquals(result.getMaterializedRows().get(3).getField(1), "bob");
-        assertEquals(result.getMaterializedRows().get(3).getField(2), "dev");
     }
 
     @Test
@@ -209,19 +206,14 @@ public class TestDeltaVariantType
                 goldenTablePathWithPrefix(DELTA_V3, "test_variant"));
         MaterializedResult result = computeActual(session, query);
 
-        assertEquals(result.getMaterializedRows().size(), 3);
+        // The five users of the table each occur once
+        assertEquals(result.getMaterializedRows().size(), 5);
 
-        // alice: 1 occurrence
-        assertEquals(result.getMaterializedRows().get(0).getField(0), "alice");
-        assertEquals(result.getMaterializedRows().get(0).getField(1), 1L);
-
-        // bob: 2 occurrences
-        assertEquals(result.getMaterializedRows().get(1).getField(0), "bob");
-        assertEquals(result.getMaterializedRows().get(1).getField(1), 2L);
-
-        // diana: 2 occurrences
-        assertEquals(result.getMaterializedRows().get(2).getField(0), "diana");
-        assertEquals(result.getMaterializedRows().get(2).getField(1), 2L);
+        String[] users = {"alice", "bob", "charlie", "diana", "eve"};
+        for (int i = 0; i < users.length; i++) {
+            assertEquals(result.getMaterializedRows().get(i).getField(0), users[i]);
+            assertEquals(result.getMaterializedRows().get(i).getField(1), 1L);
+        }
     }
 
     @Test
@@ -241,25 +233,17 @@ public class TestDeltaVariantType
                 goldenTablePathWithPrefix(DELTA_V3, "test_variant"));
         MaterializedResult result = computeActual(session, query);
 
-        assertEquals(result.getMaterializedRows().size(), 3);
+        assertEquals(result.getMaterializedRows().size(), 5);
 
-        // alice: age 30
-        assertEquals(result.getMaterializedRows().get(0).getField(0), "alice");
-        assertEquals(result.getMaterializedRows().get(0).getField(1), 30.0);
-        assertEquals(result.getMaterializedRows().get(0).getField(2), 30);
-        assertEquals(result.getMaterializedRows().get(0).getField(3), 30);
-
-        // bob: age 25
-        assertEquals(result.getMaterializedRows().get(1).getField(0), "bob");
-        assertEquals(result.getMaterializedRows().get(1).getField(1), 25.0);
-        assertEquals(result.getMaterializedRows().get(1).getField(2), 25);
-        assertEquals(result.getMaterializedRows().get(1).getField(3), 25);
-
-        // diana: age 28
-        assertEquals(result.getMaterializedRows().get(2).getField(0), "diana");
-        assertEquals(result.getMaterializedRows().get(2).getField(1), 28.0);
-        assertEquals(result.getMaterializedRows().get(2).getField(2), 28);
-        assertEquals(result.getMaterializedRows().get(2).getField(3), 28);
+        // One row per user, so every aggregate is the age of that user
+        String[] users = {"alice", "bob", "charlie", "diana", "eve"};
+        int[] ages = {30, 25, 35, 28, 42};
+        for (int i = 0; i < users.length; i++) {
+            assertEquals(result.getMaterializedRows().get(i).getField(0), users[i]);
+            assertEquals(result.getMaterializedRows().get(i).getField(1), (double) ages[i]);
+            assertEquals(result.getMaterializedRows().get(i).getField(2), ages[i]);
+            assertEquals(result.getMaterializedRows().get(i).getField(3), ages[i]);
+        }
     }
 
     @Test
@@ -278,14 +262,8 @@ public class TestDeltaVariantType
                 goldenTablePathWithPrefix(DELTA_V3, "test_variant"));
         MaterializedResult result = computeActual(session, query);
 
-        // Only bob and diana have count > 1
-        assertEquals(result.getMaterializedRows().size(), 2);
-
-        assertEquals(result.getMaterializedRows().get(0).getField(0), "bob");
-        assertEquals(result.getMaterializedRows().get(0).getField(1), 2L);
-
-        assertEquals(result.getMaterializedRows().get(1).getField(0), "diana");
-        assertEquals(result.getMaterializedRows().get(1).getField(1), 2L);
+        // No user of the table occurs more than once
+        assertEquals(result.getMaterializedRows().size(), 0);
     }
 
     @Test
@@ -304,19 +282,14 @@ public class TestDeltaVariantType
                 goldenTablePathWithPrefix(DELTA_V3, "test_variant"));
         MaterializedResult result = computeActual(session, query);
 
-        assertEquals(result.getMaterializedRows().size(), 3);
+        // Every age of the table is above the bound and occurs once
+        assertEquals(result.getMaterializedRows().size(), 5);
 
-        // Age 25: 2 occurrences
-        assertEquals(result.getMaterializedRows().get(0).getField(0), 25);
-        assertEquals(result.getMaterializedRows().get(0).getField(1), 2L);
-
-        // Age 28: 2 occurrences
-        assertEquals(result.getMaterializedRows().get(1).getField(0), 28);
-        assertEquals(result.getMaterializedRows().get(1).getField(1), 2L);
-
-        // Age 30: 1 occurrence
-        assertEquals(result.getMaterializedRows().get(2).getField(0), 30);
-        assertEquals(result.getMaterializedRows().get(2).getField(1), 1L);
+        int[] ages = {25, 28, 30, 35, 42};
+        for (int i = 0; i < ages.length; i++) {
+            assertEquals(result.getMaterializedRows().get(i).getField(0), ages[i]);
+            assertEquals(result.getMaterializedRows().get(i).getField(1), 1L);
+        }
     }
 
     @Test
@@ -340,21 +313,8 @@ public class TestDeltaVariantType
                 goldenTablePathWithPrefix(DELTA_V3, "test_variant"));
         MaterializedResult result = computeActual(session, query);
 
-        // bob: id 2 and 3
-        // diana: id 4 and 5
-        assertEquals(result.getMaterializedRows().size(), 2);
-
-        // bob 2-3
-        assertEquals(result.getMaterializedRows().get(0).getField(0), 2);
-        assertEquals(result.getMaterializedRows().get(0).getField(1), "bob");
-        assertEquals(result.getMaterializedRows().get(0).getField(2), 3);
-        assertEquals(result.getMaterializedRows().get(0).getField(3), "bob");
-
-        // diana 4-5
-        assertEquals(result.getMaterializedRows().get(1).getField(0), 4);
-        assertEquals(result.getMaterializedRows().get(1).getField(1), "diana");
-        assertEquals(result.getMaterializedRows().get(1).getField(2), 5);
-        assertEquals(result.getMaterializedRows().get(1).getField(3), "diana");
+        // No user of the table occurs in more than one row
+        assertEquals(result.getMaterializedRows().size(), 0);
     }
 
     @Test
@@ -379,23 +339,8 @@ public class TestDeltaVariantType
                 goldenTablePathWithPrefix(DELTA_V3, "test_variant"));
         MaterializedResult result = computeActual(session, query);
 
-        // age 25: bob 2-3
-        // age 28: diana 4-5
-        assertEquals(result.getMaterializedRows().size(), 2);
-
-        // bob 2-3, age 25
-        assertEquals(result.getMaterializedRows().get(0).getField(0), 2);
-        assertEquals(result.getMaterializedRows().get(0).getField(1), "bob");
-        assertEquals(result.getMaterializedRows().get(0).getField(2), 3);
-        assertEquals(result.getMaterializedRows().get(0).getField(3), "bob");
-        assertEquals(result.getMaterializedRows().get(0).getField(4), 25);
-
-        // diana 4-5, age 28
-        assertEquals(result.getMaterializedRows().get(1).getField(0), 4);
-        assertEquals(result.getMaterializedRows().get(1).getField(1), "diana");
-        assertEquals(result.getMaterializedRows().get(1).getField(2), 5);
-        assertEquals(result.getMaterializedRows().get(1).getField(3), "diana");
-        assertEquals(result.getMaterializedRows().get(1).getField(4), 28);
+        // No age of the table occurs in more than one row
+        assertEquals(result.getMaterializedRows().size(), 0);
     }
 
     @Test
@@ -412,7 +357,7 @@ public class TestDeltaVariantType
         MaterializedResult result = computeActual(session, query);
 
         assertEquals(result.getMaterializedRows().size(), 1);
-        assertEquals(result.getMaterializedRows().get(0).getField(0), 3L); // alice, bob, diana
-        assertEquals(result.getMaterializedRows().get(0).getField(1), 3L); // 25, 28, 30
+        assertEquals(result.getMaterializedRows().get(0).getField(0), 5L); // alice, bob, charlie, diana, eve
+        assertEquals(result.getMaterializedRows().get(0).getField(1), 5L); // 25, 28, 30, 35, 42
     }
 }
