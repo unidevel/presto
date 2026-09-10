@@ -19,6 +19,7 @@
 #
 
 import os
+import re
 import sys
 import xml.dom.minidom
 
@@ -174,3 +175,47 @@ html_theme_options = {
         },
     ],
 }
+
+
+def add_noopener_noreferrer(app, exception):
+    """Post-process all built HTML files to ensure every <a> tag whose href
+    points to repo1.maven.org carries rel="noopener noreferrer"."""
+    if exception or app.builder.name != "html":
+        return
+
+    outdir = app.outdir
+    _MAVEN_PATTERN = re.compile(
+        r'(<a\s[^>]*href=["\']https?://repo1\.maven\.org[^"\']*["\'][^>]*?)(/?>)',
+        re.IGNORECASE,
+    )
+
+    def _patch_tag(m):
+        tag_open = m.group(1)
+        closing = m.group(2)
+        # Already has rel= — merge the two required values in.
+        rel_match = re.search(r'\brel=["\']([^"\']*)["\']', tag_open, re.IGNORECASE)
+        if rel_match:
+            existing = rel_match.group(1).split()
+            for val in ("noopener", "noreferrer"):
+                if val not in existing:
+                    existing.append(val)
+            tag_open = tag_open[:rel_match.start()] + 'rel="%s"' % " ".join(existing) + tag_open[rel_match.end():]
+        else:
+            tag_open = tag_open + ' rel="noopener noreferrer"'
+        return tag_open + closing
+
+    for dirpath, _dirnames, filenames in os.walk(outdir):
+        for filename in filenames:
+            if not filename.endswith(".html"):
+                continue
+            filepath = os.path.join(dirpath, filename)
+            with open(filepath, "r", encoding="utf-8") as fh:
+                content = fh.read()
+            patched = _MAVEN_PATTERN.sub(_patch_tag, content)
+            if patched != content:
+                with open(filepath, "w", encoding="utf-8") as fh:
+                    fh.write(patched)
+
+
+def setup(app):
+    app.connect("build-finished", add_noopener_noreferrer)
